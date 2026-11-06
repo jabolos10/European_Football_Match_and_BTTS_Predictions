@@ -1,4 +1,5 @@
-"""Tests for src/elo.py.
+"""
+Tests for src/elo.py.
 
 Run from the project root:  python -m pytest -q
 """
