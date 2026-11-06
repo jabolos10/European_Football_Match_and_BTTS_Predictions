@@ -9,6 +9,8 @@ Feature groups (added one by one in src/evaluate_models.py to see what helps):
   league       - which league it is (home advantage and draw rates differ between leagues)
   form         - points, goals scored and goals conceded per match in the last 5 matches
   scoring      - in the last 10 matches: % with both teams scoring, % clean sheets, % failed to score
+  shots        - shots on target made and allowed, shot accuracy and finishing in the last 10 matches
+                 (top 5 leagues only - Ekstraklasa files have no shot statistics)
   h2h          - the last 6 meetings of these two teams: points of the home team, % BTTS, goals per match
   league_trend - % BTTS and goals per match in the league over its last 15 match days
   day          - day of the week (e.g. Saturdays in Ekstraklasa)
@@ -18,6 +20,7 @@ import pandas as pd
 
 FORM_MATCHES = 5
 SCORING_MATCHES = 10
+SHOTS_MATCHES = 10
 H2H_MATCHES = 6
 TREND_MATCH_DAYS = 15
 DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -32,6 +35,9 @@ def feature_groups(leagues):
                  "home_goals_against", "away_goals_against"],
         "scoring": ["home_btts_rate", "away_btts_rate", "home_clean_sheet_rate", "away_clean_sheet_rate",
                     "home_failed_to_score_rate", "away_failed_to_score_rate"],
+        "shots": ["home_shots_target_for", "away_shots_target_for", "home_shots_target_against",
+                  "away_shots_target_against", "home_shot_accuracy", "away_shot_accuracy",
+                  "home_finishing", "away_finishing", "has_shot_stats"],
         "h2h": ["h2h_home_ppg", "h2h_btts_rate", "h2h_goals", "h2h_count"],
         "league_trend": ["league_btts_trend", "league_goals_trend"],
         "day": [f"day_{day}" for day in DAYS],
@@ -40,15 +46,23 @@ def feature_groups(leagues):
 
 def team_view(matches):
     """Every match twice: once from the home team's point of view, once from the away team's."""
+    def column(name):
+        """Shot columns are missing in some tables (e.g. small test tables) - use NaN then."""
+        return matches[name] if name in matches.columns else np.nan
+
     home = pd.DataFrame({
-        "match_id": matches.index, "date": matches["date"],
+        "match_id": matches.index, "date": matches["date"], "season": column("season"),
         "team": matches["home_team"], "opponent": matches["away_team"], "is_home": 1,
         "goals_for": matches["home_goals"], "goals_against": matches["away_goals"],
+        "shots_for": column("home_shots"), "shots_target_for": column("home_shots_target"),
+        "shots_target_against": column("away_shots_target"),
     })
     away = pd.DataFrame({
-        "match_id": matches.index, "date": matches["date"],
+        "match_id": matches.index, "date": matches["date"], "season": column("season"),
         "team": matches["away_team"], "opponent": matches["home_team"], "is_home": 0,
         "goals_for": matches["away_goals"], "goals_against": matches["home_goals"],
+        "shots_for": column("away_shots"), "shots_target_for": column("away_shots_target"),
+        "shots_target_against": column("home_shots_target"),
     })
     long = pd.concat([home, away], ignore_index=True)
     long["points"] = np.select(
@@ -57,6 +71,9 @@ def team_view(matches):
     long["clean_sheet"] = (long["goals_against"] == 0).astype(float)
     long["failed_to_score"] = (long["goals_for"] == 0).astype(float)
     long["total_goals"] = long["goals_for"] + long["goals_against"]
+    # shot accuracy = shots on target / all shots, finishing = goals / shots on target
+    long["shot_accuracy"] = long["shots_target_for"] / long["shots_for"].where(long["shots_for"] > 0)
+    long["finishing"] = long["goals_for"] / long["shots_target_for"].where(long["shots_target_for"] > 0)
     return long.sort_values(["date", "match_id"], kind="stable").reset_index(drop=True)
 
 
@@ -76,6 +93,13 @@ def add_team_features(long):
     long["btts_rate"] = past_mean(long, "team", "btts", SCORING_MATCHES)
     long["clean_sheet_rate"] = past_mean(long, "team", "clean_sheet", SCORING_MATCHES)
     long["failed_to_score_rate"] = past_mean(long, "team", "failed_to_score", SCORING_MATCHES)
+
+    for column in ["shots_target_for", "shots_target_against", "shot_accuracy", "finishing"]:
+        long[f"{column}_avg"] = long.groupby("team")[column].transform(
+            lambda s: s.shift(1).rolling(SHOTS_MATCHES, min_periods=1).mean())
+
+    # how many matches the team has already played this season (to compare early vs late season)
+    long["season_games"] = long.groupby(["team", "season"], dropna=False).cumcount()
 
     pair = ["team", "opponent"]  # the same two teams, from this team's point of view
     long["h2h_ppg"] = past_mean(long, pair, "points", H2H_MATCHES)
@@ -115,13 +139,16 @@ def add_features(matches, leagues):
 
     long = add_team_features(team_view(df))
     team_columns = ["ppg", "goals_for_avg", "goals_against_avg", "btts_rate",
-                    "clean_sheet_rate", "failed_to_score_rate"]
+                    "clean_sheet_rate", "failed_to_score_rate", "shots_target_for_avg",
+                    "shots_target_against_avg", "shot_accuracy_avg", "finishing_avg", "season_games"]
     home = long[long["is_home"] == 1].set_index("match_id")
     away = long[long["is_home"] == 0].set_index("match_id")
     for column in team_columns:
         name = column.replace("_avg", "")
         df[f"home_{name}"] = home[column]
         df[f"away_{name}"] = away[column]
+    # 1 = shot statistics exist for this league (Ekstraklasa files have none)
+    df["has_shot_stats"] = (df["home_shots_target_for"].notna() | df["away_shots_target_for"].notna()).astype(int)
     df["h2h_home_ppg"] = home["h2h_ppg"]
     df["h2h_btts_rate"] = home["h2h_btts"]
     df["h2h_goals"] = home["h2h_goals"]

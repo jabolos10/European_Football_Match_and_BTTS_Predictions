@@ -65,9 +65,10 @@ def walk_forward(df, columns, make_model, target, n_classes):
     for season in TEST_SEASONS:
         train = ((df["season"] >= FIRST_TRAIN_SEASON) & (df["season"] < season)).to_numpy()
         test = (df["season"] == season).to_numpy()
-        model = make_model().fit(df.loc[train, columns], df.loc[train, target])
+        usable = [c for c in columns if df.loc[train, c].notna().any()]  # skip columns with no data at all
+        model = make_model().fit(df.loc[train, usable], df.loc[train, target])
         season_probs = np.zeros((test.sum(), n_classes))
-        season_probs[:, model.classes_] = model.predict_proba(df.loc[test, columns])
+        season_probs[:, model.classes_] = model.predict_proba(df.loc[test, usable])
         probs[test] = season_probs
     return probs
 
@@ -154,7 +155,16 @@ def main():
         per_league.append(row)
     print_table("Per league:", per_league)
 
-    # 5) Confident picks: when the forecast is sure, how often is it right?
+        # 5) Start of the season (after summer transfers) vs the rest
+    early = tested["home_season_games"].to_numpy() < 5
+    rows = []
+    for name in ["Elo only", "logistic, all features", "bookmakers"]:
+        rows.append({"model": name,
+                     "rps: first 5 rounds": rps(forecasts[name][early], outcomes[early]),
+                     "rps: rest of season": rps(forecasts[name][~early], outcomes[~early])})
+    print_table(f"Start of the season ({early.sum()} matches) vs the rest ({(~early).sum()} matches):", rows)
+
+    # 6) Confident picks: when the forecast is sure, how often is it right?
     rows = []
     for threshold in [0.5, 0.6, 0.7]:
         for name in ["logistic, all features", "bookmakers"]:

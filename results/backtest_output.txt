@@ -1,0 +1,90 @@
+Choosing Elo settings on the validation seasons...
+  [1/60] {'k': 8, 'new_team_gap': 50, 'season_regression': 0.0} -> RPS 0.2071
+  [2/60] {'k': 8, 'new_team_gap': 50, 'season_regression': 0.1} -> RPS 0.2066
+  [3/60] {'k': 8, 'new_team_gap': 50, 'season_regression': 0.2} -> RPS 0.2065
+  [4/60] {'k': 8, 'new_team_gap': 50, 'season_regression': 0.3} -> RPS 0.2066
+  [5/60] {'k': 8, 'new_team_gap': 100, 'season_regression': 0.0} -> RPS 0.2076
+  [6/60] {'k': 8, 'new_team_gap': 100, 'season_regression': 0.1} -> RPS 0.2074
+  [7/60] {'k': 8, 'new_team_gap': 100, 'season_regression': 0.2} -> RPS 0.2076
+  [8/60] {'k': 8, 'new_team_gap': 100, 'season_regression': 0.3} -> RPS 0.2081
+  [9/60] {'k': 8, 'new_team_gap': 150, 'season_regression': 0.0} -> RPS 0.2087
+  [10/60] {'k': 8, 'new_team_gap': 150, 'season_regression': 0.1} -> RPS 0.2089
+  [11/60] {'k': 8, 'new_team_gap': 150, 'season_regression': 0.2} -> RPS 0.2094
+  [12/60] {'k': 8, 'new_team_gap': 150, 'season_regression': 0.3} -> RPS 0.2103
+  [13/60] {'k': 10, 'new_team_gap': 50, 'season_regression': 0.0} -> RPS 0.2069
+  [14/60] {'k': 10, 'new_team_gap': 50, 'season_regression': 0.1} -> RPS 0.2066
+  [15/60] {'k': 10, 'new_team_gap': 50, 'season_regression': 0.2} -> RPS 0.2065
+  [16/60] {'k': 10, 'new_team_gap': 50, 'season_regression': 0.3} -> RPS 0.2067
+  [17/60] {'k': 10, 'new_team_gap': 100, 'season_regression': 0.0} -> RPS 0.2072
+  [18/60] {'k': 10, 'new_team_gap': 100, 'season_regression': 0.1} -> RPS 0.2071
+  [19/60] {'k': 10, 'new_team_gap': 100, 'season_regression': 0.2} -> RPS 0.2072
+  [20/60] {'k': 10, 'new_team_gap': 100, 'season_regression': 0.3} -> RPS 0.2077
+  [21/60] {'k': 10, 'new_team_gap': 150, 'season_regression': 0.0} -> RPS 0.2080
+  [22/60] {'k': 10, 'new_team_gap': 150, 'season_regression': 0.1} -> RPS 0.2082
+  [23/60] {'k': 10, 'new_team_gap': 150, 'season_regression': 0.2} -> RPS 0.2087
+  [24/60] {'k': 10, 'new_team_gap': 150, 'season_regression': 0.3} -> RPS 0.2094
+  [25/60] {'k': 12, 'new_team_gap': 50, 'season_regression': 0.0} -> RPS 0.2069
+  [26/60] {'k': 12, 'new_team_gap': 50, 'season_regression': 0.1} -> RPS 0.2066
+  [27/60] {'k': 12, 'new_team_gap': 50, 'season_regression': 0.2} -> RPS 0.2066
+  [28/60] {'k': 12, 'new_team_gap': 50, 'season_regression': 0.3} -> RPS 0.2068
+  [29/60] {'k': 12, 'new_team_gap': 100, 'season_regression': 0.0} -> RPS 0.2070
+  [30/60] {'k': 12, 'new_team_gap': 100, 'season_regression': 0.1} -> RPS 0.2069
+  [31/60] {'k': 12, 'new_team_gap': 100, 'season_regression': 0.2} -> RPS 0.2071
+  [32/60] {'k': 12, 'new_team_gap': 100, 'season_regression': 0.3} -> RPS 0.2075
+  [33/60] {'k': 12, 'new_team_gap': 150, 'season_regression': 0.0} -> RPS 0.2077
+  [34/60] {'k': 12, 'new_team_gap': 150, 'season_regression': 0.1} -> RPS 0.2078
+  [35/60] {'k': 12, 'new_team_gap': 150, 'season_regression': 0.2} -> RPS 0.2082
+  [36/60] {'k': 12, 'new_team_gap': 150, 'season_regression': 0.3} -> RPS 0.2089
+  [37/60] {'k': 15, 'new_team_gap': 50, 'season_regression': 0.0} -> RPS 0.2070
+  [38/60] {'k': 15, 'new_team_gap': 50, 'season_regression': 0.1} -> RPS 0.2068
+  [39/60] {'k': 15, 'new_team_gap': 50, 'season_regression': 0.2} -> RPS 0.2068
+  [40/60] {'k': 15, 'new_team_gap': 50, 'season_regression': 0.3} -> RPS 0.2071
+  [41/60] {'k': 15, 'new_team_gap': 100, 'season_regression': 0.0} -> RPS 0.2070
+  [42/60] {'k': 15, 'new_team_gap': 100, 'season_regression': 0.1} -> RPS 0.2070
+  [43/60] {'k': 15, 'new_team_gap': 100, 'season_regression': 0.2} -> RPS 0.2071
+  [44/60] {'k': 15, 'new_team_gap': 100, 'season_regression': 0.3} -> RPS 0.2075
+  [45/60] {'k': 15, 'new_team_gap': 150, 'season_regression': 0.0} -> RPS 0.2075
+  [46/60] {'k': 15, 'new_team_gap': 150, 'season_regression': 0.1} -> RPS 0.2076
+  [47/60] {'k': 15, 'new_team_gap': 150, 'season_regression': 0.2} -> RPS 0.2079
+  [48/60] {'k': 15, 'new_team_gap': 150, 'season_regression': 0.3} -> RPS 0.2085
+  [49/60] {'k': 20, 'new_team_gap': 50, 'season_regression': 0.0} -> RPS 0.2073
+  [50/60] {'k': 20, 'new_team_gap': 50, 'season_regression': 0.1} -> RPS 0.2073
+  [51/60] {'k': 20, 'new_team_gap': 50, 'season_regression': 0.2} -> RPS 0.2074
+  [52/60] {'k': 20, 'new_team_gap': 50, 'season_regression': 0.3} -> RPS 0.2077
+  [53/60] {'k': 20, 'new_team_gap': 100, 'season_regression': 0.0} -> RPS 0.2073
+  [54/60] {'k': 20, 'new_team_gap': 100, 'season_regression': 0.1} -> RPS 0.2073
+  [55/60] {'k': 20, 'new_team_gap': 100, 'season_regression': 0.2} -> RPS 0.2075
+  [56/60] {'k': 20, 'new_team_gap': 100, 'season_regression': 0.3} -> RPS 0.2078
+  [57/60] {'k': 20, 'new_team_gap': 150, 'season_regression': 0.0} -> RPS 0.2075
+  [58/60] {'k': 20, 'new_team_gap': 150, 'season_regression': 0.1} -> RPS 0.2077
+  [59/60] {'k': 20, 'new_team_gap': 150, 'season_regression': 0.2} -> RPS 0.2080
+  [60/60] {'k': 20, 'new_team_gap': 150, 'season_regression': 0.3} -> RPS 0.2084
+
+Best 5 settings:
+ k  new_team_gap  season_regression  validation_rps
+ 8            50                0.2          0.2065
+10            50                0.2          0.2065
+10            50                0.1          0.2066
+12            50                0.2          0.2066
+12            50                0.1          0.2066
+
+Testing on seasons 2021-2026 with {'k': 8.0, 'home_advantage': 60.0, 'initial_rating': 1500.0, 'new_team_gap': 50.0, 'season_regression': 0.2}
+
+RPS per league, all test seasons (lower is better):
+forecaster  Elo model  base rates  bookmakers
+league                                       
+D1             0.2030      0.2303      0.1966
+E0             0.2011      0.2321      0.1936
+F1             0.2063      0.2317      0.2016
+I1             0.1964      0.2305      0.1909
+POL            0.2183      0.2256      0.2115
+SP1            0.1974      0.2258      0.1921
+
+All leagues and test seasons together:
+            matches     rps  log_loss  accuracy
+forecaster                                     
+bookmakers  10438.0  0.1972    0.9778    0.5295
+Elo model   10438.0  0.2032    0.9980    0.5144
+base rates  10438.0  0.2294    1.0738    0.4359
+
+Saved results/elo_params.json and results/backtest_results.csv

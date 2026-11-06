@@ -51,6 +51,7 @@ ODDS_SOURCES = [
 OUTPUT_COLUMNS = [
     "date", "season", "country", "league", "home_team", "away_team",
     "home_goals", "away_goals", "home_shots_target", "away_shots_target",
+    "home_shots", "away_shots",
     "odds_home", "odds_draw", "odds_away", "odds_source",
 ]
 
@@ -108,7 +109,7 @@ def add_odds(df):
 def finish(df, country, league):
     """Add odds and the columns every file must have, keep only the columns we use."""
     df = add_odds(df)
-    for column in ["home_shots_target", "away_shots_target"]:
+    for column in ["home_shots", "away_shots", "home_shots_target", "away_shots_target"]:
         if column not in df.columns:
             df[column] = float("nan")  # smaller leagues have no shot statistics
     df["country"], df["league"] = country, league
@@ -127,6 +128,7 @@ def load_main_league(country, league):
             "HomeTeam": "home_team", "AwayTeam": "away_team",
             "FTHG": "home_goals", "FTAG": "away_goals",
             "HST": "home_shots_target", "AST": "away_shots_target",
+            "HS": "home_shots", "AS": "away_shots",
         })
         df["season"] = year
         frames.append(finish(df, country, league))

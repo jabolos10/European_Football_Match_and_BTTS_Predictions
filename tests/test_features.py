@@ -53,6 +53,21 @@ def test_league_trend_ignores_the_current_day():
     assert df.loc[3, "league_btts_trend"] == pytest.approx(2 / 3)
 
 
+def test_shot_features_use_only_earlier_matches():
+    matches = MATCHES.copy()
+    matches["season"] = 2024
+    matches["home_shots"], matches["away_shots"] = [10, 8, 12, 9], [6, 10, 7, 5]
+    matches["home_shots_target"], matches["away_shots_target"] = [4, 2, 6, 3], [2, 5, 3, 1]
+    df = add_features(matches, ["E0"])
+    assert pd.isna(df.loc[0, "home_shots_target_for"])
+    # Before match 3, A had 4 shots on target (home vs B) and 5 (away at B) -> 4.5 per match
+    assert df.loc[2, "home_shots_target_for"] == pytest.approx(4.5)
+    # finishing: A scored 2 goals from 4 on target, then 0 from 5 -> (0.5 + 0.0) / 2
+    assert df.loc[2, "home_finishing"] == pytest.approx(0.25)
+    assert df.loc[2, "home_season_games"] == 2
+    assert df.loc[2, "has_shot_stats"] == 1
+
+
 def test_league_and_day_columns():
     df = add_features(MATCHES, ["E0", "SP1"])
     assert df.loc[0, "league_E0"] == 1 and df.loc[0, "league_SP1"] == 0

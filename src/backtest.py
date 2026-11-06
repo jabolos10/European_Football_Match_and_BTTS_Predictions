@@ -32,8 +32,8 @@ VALIDATION_SEASONS = [2019, 2020]
 TEST_SEASONS = [2021, 2022, 2023, 2024, 2025]
 GRID = {
     "k": [8, 10, 12, 15, 20],
-    "home_advantage": [40, 60, 80],
     "new_team_gap": [50, 100, 150],
+    "season_regression": [0.0, 0.1, 0.2, 0.3],  # pull ratings back to the league average at a new season
 }
 
 def prepare(matches, params):

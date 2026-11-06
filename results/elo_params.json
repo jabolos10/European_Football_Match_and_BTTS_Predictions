@@ -1,7 +1,7 @@
 {
-  "k": 12.0,
+  "k": 8.0,
   "home_advantage": 60.0,
   "initial_rating": 1500.0,
   "new_team_gap": 50.0,
-  "season_regression": 0.0
+  "season_regression": 0.2
 }
