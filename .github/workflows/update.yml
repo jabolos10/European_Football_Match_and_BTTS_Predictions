@@ -1,0 +1,73 @@
+# Every morning: test the code, download the newest results, predict upcoming matches,
+# settle finished ones and publish the website on GitHub Pages.
+name: Update predictions
+
+on:
+  schedule:
+    - cron: "0 5 * * *"   # every day at 05:00 UTC, before the first kick-off
+  workflow_dispatch:       # "Run workflow" button on GitHub
+  push:
+    branches: [main]
+    paths: ["src/**", "tests/**", ".github/workflows/**"]
+
+permissions:
+  contents: write   # to commit the prediction log back to the repository
+  pages: write
+  id-token: write
+
+concurrency:
+  group: update-predictions
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install packages
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: python -m pytest -q
+
+      - name: Cache old seasons of match data
+        uses: actions/cache@v4
+        with:
+          path: data/raw
+          key: football-data-${{ github.run_id }}
+          restore-keys: football-data-
+
+      - name: Download results
+        run: python -m src.load_domestic_leagues
+
+      - name: Predict upcoming matches
+        run: python -m src.predict_fixtures > /dev/null   # the screen output shows bookmaker odds - keep it out of public logs
+
+      - name: Build website
+        run: python -m src.build_site
+
+      - name: Save prediction log
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add results/predictions_log.csv results/predictions_upcoming.csv
+          git diff --cached --quiet || git commit -m "Update predictions $(date -u +%F)"
+          git push
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4

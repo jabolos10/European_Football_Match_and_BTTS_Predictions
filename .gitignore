@@ -9,3 +9,4 @@ data/processed/
 .pytest_cache/
 .DS_Store
 results/predictions_output.txt
+site/
