@@ -42,6 +42,10 @@ def accuracy(probs, outcomes):
     """Share of matches where the most likely outcome happened."""
     return float(np.mean(np.argmax(probs, axis=1) == np.asarray(outcomes)))
 
+def brier(prob_yes, happened):
+    """Average squared gap between the forecast % and what happened (1 or 0). Lower is better."""
+    return float(np.mean((np.asarray(prob_yes, dtype=float) - np.asarray(happened, dtype=float)) ** 2))
+
 def market_probabilities(odds_home, odds_draw, odds_away):
     """Turn bookmacher odds into probabilities.
 
