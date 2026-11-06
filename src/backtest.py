@@ -129,8 +129,6 @@ def main():
     print(per_league["rps"].unstack().round(4).to_string())
     print("\nAll leagues and test seasons together:")
     print(overall.round(4).to_string())
-    print("\nAll test seasons together:")
-    print(overall.round(4).to_string())
 
     RESULT_DIR.mkdir(exist_ok=True)
     (RESULT_DIR / "elo_params.json").write_text(json.dumps(asdict(params), indent=2))

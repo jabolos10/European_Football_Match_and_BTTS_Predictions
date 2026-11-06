@@ -43,7 +43,7 @@ def main():
     elo_picks_home = decisive["elo_home"] + params.home_advantage > decisive["elo_away"]
     market_picks_home = decisive["odds_home"] < decisive["odds_away"]
 
-    print(f"\nPremier League + LaLiga since {season_label(CHECK_FROM_SEASON)}, "
+    print(f"\nAll our leagues since {season_label(CHECK_FROM_SEASON)}, "
           f"{len(decisive)} matches without a draw:")
     print(f"  Elo favourite won:        {(elo_picks_home == home_won).mean():.1%}")
     print(f"  Bookmaker favourite won:  {(market_picks_home == home_won).mean():.1%}")
