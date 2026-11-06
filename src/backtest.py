@@ -26,7 +26,7 @@ from src.metrics import accuracy, log_loss, market_probabilities, outcome_index,
 
 MATCHES_FILE = "data/processed/domestic_matches.csv"
 RESULT_DIR = Path("results")
-LEAGUES = ["E0", "SP1"]
+LEAGUES = ["E0", "SP1", "I1", "D1", "F1", "POL"]  # top 5 leagues + Ekstraklasa
 FIRST_TRAIN_SEASON = 2017   #2016-17 is only a warm-up season for the ratings
 VALIDATION_SEASONS = [2019, 2020]
 TEST_SEASONS = [2021, 2022, 2023, 2024, 2025]
@@ -58,24 +58,31 @@ def predict_probs(model, df):
     return ordered
 
 def evaluate_season(df, season):
-    """Train on all seasons before 'season', test on 'season'. Returns one row of scores per d
-    forecasters."""
-    train = df[(df["season"] >= FIRST_TRAIN_SEASON) & (df["season"] < season)]
-    test = df[(df["season"] == season)].dropna(subset=["odds_home", "odds_draw", "odds_away"])
-    outcomes = test["outcome"].to_numpy()
+    """Train on all seasons before `season`, test on `season`.
 
+    One model is trained on all our leagues together; scores are reported per league.
+    Returns one row of scores per league and forecaster.
+    """
+    train = df[(df["season"] >= FIRST_TRAIN_SEASON) & (df["season"] < season)]
+    test_all = df[df["season"] == season].dropna(subset=["odds_home", "odds_draw", "odds_away"])
+    model = fit_model(train)
     base_rates = np.bincount(train["outcome"], minlength=3) / len(train)
-    forecasts = {
-        "base rates": np.tile(base_rates, (len(test), 1)),
-        "Elo model": predict_probs(fit_model(train), test),
-        "bookmakers": market_probabilities(test["odds_home"], test["odds_draw"], test["odds_away"]),
-    }
-    return [
-        {"season": season, "forecaster": name, "matches": len(test),
-         "rps": rps(probs, outcomes), "log_loss": log_loss(probs, outcomes),
-         "accuracy": accuracy(probs, outcomes)}
-         for name, probs in forecasts.items()
-    ]
+
+    rows = []
+    for league, test in test_all.groupby("league"):
+        outcomes = test["outcome"].to_numpy()
+        forecasts = {
+            "base rates": np.tile(base_rates, (len(test), 1)),
+            "Elo model": predict_probs(model, test),
+            "bookmakers": market_probabilities(test["odds_home"], test["odds_draw"], test["odds_away"]),
+        }
+        rows += [
+            {"season": season, "league": league, "forecaster": name, "matches": len(test),
+             "rps": rps(probs, outcomes), "log_loss": log_loss(probs, outcomes),
+             "accuracy": accuracy(probs, outcomes)}
+            for name, probs in forecasts.items()
+        ]
+    return rows
 
 def choose_elo_params(matches):
     """Try every combination in GRID, keep the one with the lowest RPS,on the validation seasons."""
@@ -106,19 +113,22 @@ def main():
     rows = [r for season in TEST_SEASONS for r in evaluate_season(df, season)]
     results = pd.DataFrame(rows)
 
-    per_season = results.pivot(index="season", columns="forecaster", values="rps")
-    overall = results.groupby("forecaster").apply(
-        lambda g: pd.Series({
-            "matches": g["matches"].sum(),
-            "rps": np.average(g["rps"], weights=g["matches"]),
-            "log_loss": np.average(g["log_loss"], weights=g["matches"]),
-            "accuracy": np.average(g["accuracy"], weights=g["matches"]),
-        }),
-        include_groups=False,
-    ).sort_values("rps")
+    def weighted(group):
+        """Average scores over seasons/leagues, weighted by the number of matches."""
+        return pd.Series({
+            "matches": group["matches"].sum(),
+            "rps": np.average(group["rps"], weights=group["matches"]),
+            "log_loss": np.average(group["log_loss"], weights=group["matches"]),
+            "accuracy": np.average(group["accuracy"], weights=group["matches"]),
+        })
 
-    print("\nRPS per test season (lower is better):")
-    print(per_season.round(4).to_string())
+    per_league = results.groupby(["league", "forecaster"]).apply(weighted, include_groups=False)
+    overall = results.groupby("forecaster").apply(weighted, include_groups=False).sort_values("rps")
+
+    print("\nRPS per league, all test seasons (lower is better):")
+    print(per_league["rps"].unstack().round(4).to_string())
+    print("\nAll leagues and test seasons together:")
+    print(overall.round(4).to_string())
     print("\nAll test seasons together:")
     print(overall.round(4).to_string())
 

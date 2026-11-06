@@ -12,7 +12,7 @@ import pandas as pd
 from src.elo import EloParams, compute_elo
 
 MATCHES_FILE = "data/processed/domestic_matches.csv"
-LEAGUES = {"E0": "Premier League", "SP1": "LaLiga"}
+LEAGUES = {"E0": "Premier League", "SP1": "LaLiga", "I1": "Serie A", "D1": "Bundesliga", "F1": "Ligue 1", "POL": "Ekstraklasa"}
 CHECK_FROM_SEASON = 2021
 
 
