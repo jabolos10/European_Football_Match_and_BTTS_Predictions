@@ -8,3 +8,4 @@ __pycache__/
 data/processed/
 .pytest_cache/
 .DS_Store
+results/predictions_output.txt

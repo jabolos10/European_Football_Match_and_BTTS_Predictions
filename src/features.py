@@ -11,6 +11,10 @@ Feature groups (added one by one in src/evaluate_models.py to see what helps):
   scoring      - in the last 10 matches: % with both teams scoring, % clean sheets, % failed to score
   shots        - shots on target made and allowed, shot accuracy and finishing in the last 10 matches
                  (top 5 leagues only - Ekstraklasa files have no shot statistics)
+  venue        - the home team in its last 6 HOME matches, the away team in its last 6 AWAY matches:
+                 goals scored, goals conceded, % BTTS, % clean sheets, % failed to score
+  recent       - goals scored and conceded in the last 3 and last 10 matches (form uses 5),
+                 so the model itself can decide how much the latest matches count
   h2h          - the last 6 meetings of these two teams: points of the home team, % BTTS, goals per match
   league_trend - % BTTS and goals per match in the league over its last 15 match days
   day          - day of the week (e.g. Saturdays in Ekstraklasa)
@@ -21,6 +25,8 @@ import pandas as pd
 FORM_MATCHES = 5
 SCORING_MATCHES = 10
 SHOTS_MATCHES = 10
+VENUE_MATCHES = 6
+RECENT_WINDOWS = [3, 10]
 H2H_MATCHES = 6
 TREND_MATCH_DAYS = 15
 DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -38,6 +44,12 @@ def feature_groups(leagues):
         "shots": ["home_shots_target_for", "away_shots_target_for", "home_shots_target_against",
                   "away_shots_target_against", "home_shot_accuracy", "away_shot_accuracy",
                   "home_finishing", "away_finishing", "has_shot_stats"],
+        "venue": ["home_venue_goals_for", "home_venue_goals_against", "home_venue_btts_rate",
+                  "home_venue_clean_sheet_rate", "home_venue_failed_to_score_rate",
+                  "away_venue_goals_for", "away_venue_goals_against", "away_venue_btts_rate",
+                  "away_venue_clean_sheet_rate", "away_venue_failed_to_score_rate"],
+        "recent": [f"{side}_goals_{kind}_{n}" for n in RECENT_WINDOWS
+                   for side in ("home", "away") for kind in ("for", "against")],
         "h2h": ["h2h_home_ppg", "h2h_btts_rate", "h2h_goals", "h2h_count"],
         "league_trend": ["league_btts_trend", "league_goals_trend"],
         "day": [f"day_{day}" for day in DAYS],
@@ -65,11 +77,14 @@ def team_view(matches):
         "shots_target_against": column("home_shots_target"),
     })
     long = pd.concat([home, away], ignore_index=True)
-    long["points"] = np.select(
+    # Upcoming matches have no score yet: their results stay NaN, so they never count as 0 points / no BTTS
+    played = long["goals_for"].notna() & long["goals_against"].notna()
+    points = np.select(
         [long["goals_for"] > long["goals_against"], long["goals_for"] == long["goals_against"]], [3, 1], 0)
-    long["btts"] = ((long["goals_for"] > 0) & (long["goals_against"] > 0)).astype(float)
-    long["clean_sheet"] = (long["goals_against"] == 0).astype(float)
-    long["failed_to_score"] = (long["goals_for"] == 0).astype(float)
+    long["points"] = np.where(played, points, np.nan)
+    long["btts"] = np.where(played, (long["goals_for"] > 0) & (long["goals_against"] > 0), np.nan)
+    long["clean_sheet"] = np.where(played, long["goals_against"] == 0, np.nan)
+    long["failed_to_score"] = np.where(played, long["goals_for"] == 0, np.nan)
     long["total_goals"] = long["goals_for"] + long["goals_against"]
     # shot accuracy = shots on target / all shots, finishing = goals / shots on target
     long["shot_accuracy"] = long["shots_target_for"] / long["shots_for"].where(long["shots_for"] > 0)
@@ -98,6 +113,19 @@ def add_team_features(long):
         long[f"{column}_avg"] = long.groupby("team")[column].transform(
             lambda s: s.shift(1).rolling(SHOTS_MATCHES, min_periods=1).mean())
 
+    # Only home matches for the home team, only away matches for the away team
+    venue = ["team", "is_home"]
+    long["venue_goals_for"] = past_mean(long, venue, "goals_for", VENUE_MATCHES)
+    long["venue_goals_against"] = past_mean(long, venue, "goals_against", VENUE_MATCHES)
+    long["venue_btts_rate"] = past_mean(long, venue, "btts", VENUE_MATCHES)
+    long["venue_clean_sheet_rate"] = past_mean(long, venue, "clean_sheet", VENUE_MATCHES)
+    long["venue_failed_to_score_rate"] = past_mean(long, venue, "failed_to_score", VENUE_MATCHES)
+
+    # Goals in the last 3 and last 10 matches, next to the last 5 from the form group
+    for n in RECENT_WINDOWS:
+        long[f"goals_for_{n}"] = past_mean(long, "team", "goals_for", n)
+        long[f"goals_against_{n}"] = past_mean(long, "team", "goals_against", n)
+
     # how many matches the team has already played this season (to compare early vs late season)
     long["season_games"] = long.groupby(["team", "season"], dropna=False).cumcount()
 
@@ -111,13 +139,14 @@ def add_team_features(long):
 
 def league_trend(matches):
     """% BTTS and goals per match in each league over its previous match days (not the current day)."""
+    played = matches["home_goals"].notna() & matches["away_goals"].notna()  # upcoming matches don't count
     df = pd.DataFrame({
-        "league": matches["league"], "date": matches["date"],
-        "btts": (matches["home_goals"] > 0) & (matches["away_goals"] > 0),
+        "league": matches["league"], "date": matches["date"], "played": played,
+        "btts": ((matches["home_goals"] > 0) & (matches["away_goals"] > 0)).where(played),
         "goals": matches["home_goals"] + matches["away_goals"],
     })
     per_day = (df.groupby(["league", "date"])
-                 .agg(btts=("btts", "sum"), goals=("goals", "sum"), n=("btts", "size"))
+                 .agg(btts=("btts", "sum"), goals=("goals", "sum"), n=("played", "sum"))
                  .reset_index()
                  .sort_values(["league", "date"]))
 
@@ -140,7 +169,10 @@ def add_features(matches, leagues):
     long = add_team_features(team_view(df))
     team_columns = ["ppg", "goals_for_avg", "goals_against_avg", "btts_rate",
                     "clean_sheet_rate", "failed_to_score_rate", "shots_target_for_avg",
-                    "shots_target_against_avg", "shot_accuracy_avg", "finishing_avg", "season_games"]
+                    "shots_target_against_avg", "shot_accuracy_avg", "finishing_avg", "season_games",
+                    "venue_goals_for", "venue_goals_against", "venue_btts_rate",
+                    "venue_clean_sheet_rate", "venue_failed_to_score_rate"]
+    team_columns += [f"goals_{kind}_{n}" for n in RECENT_WINDOWS for kind in ("for", "against")]
     home = long[long["is_home"] == 1].set_index("match_id")
     away = long[long["is_home"] == 0].set_index("match_id")
     for column in team_columns:

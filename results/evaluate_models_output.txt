@@ -4,6 +4,8 @@
   added form
   added scoring
   added shots
+  added venue
+  added recent
   added h2h
   added league_trend
   added day
@@ -16,54 +18,68 @@ model
 + form              0.2028      0.2481
 + scoring           0.2029      0.2478
 + shots             0.2019      0.2476
-+ h2h               0.2019      0.2475
-+ league_trend      0.2021      0.2475
-+ day               0.2021      0.2478
++ venue             0.2021      0.2476
++ recent            0.2022      0.2478
++ h2h               0.2022      0.2477
++ league_trend      0.2024      0.2477
++ day               0.2024      0.2480
 
 Match result (home / draw / away):
                            rps  log_loss  accuracy
 model                                             
 base rates              0.2294    1.0738    0.4359
 Elo only                0.2032    0.9980    0.5142
-logistic, all features  0.2021    0.9948    0.5168
-boosting, all features  0.2030    0.9987    0.5164
+logistic, all features  0.2024    0.9962    0.5154
+boosting, all features  0.2029    0.9975    0.5156
+goals model (Poisson)   0.2021    0.9949    0.5183
 bookmakers              0.1972    0.9778    0.5295
 
 Both teams to score (yes / no):
-                         brier  log_loss  accuracy
-model                                             
-base rates              0.2482    0.6896    0.5444
-logistic, all features  0.2478    0.6886    0.5310
-boosting, all features  0.2481    0.6893    0.5347
+                                 brier  log_loss  accuracy
+model                                                     
+base rates                      0.2482    0.6896    0.5444
+logistic, all features          0.2480    0.6891    0.5304
+boosting, all features          0.2481    0.6894    0.5339
+logistic, one model per league  0.2524    0.6996    0.5192
+goals model (Poisson)           0.2471    0.6874    0.5382
+
+BTTS forecasts: how spread out, and how often BTTS really happened in each range:
+                                spread (std)  lowest  highest  0%-45% n  0%-45% real  45%-55% n  45%-55% real  55%-65% n  55%-65% real  65%-100% n  65%-100% real
+model                                                                                                                                                            
+base rates                            0.0031  0.5267   0.5356         0          NaN      10438        0.5444          0           NaN           0            NaN
+logistic, all features                0.0522  0.2587   0.7481       470       0.5043       6282        0.5287       3475        0.5695         211         0.6872
+boosting, all features                0.0438  0.3056   0.7028       343       0.5394       7125        0.5309       2903        0.5760          67         0.6269
+logistic, one model per league        0.0898  0.0022   0.9225      1621       0.5083       4314        0.5408       3364        0.5529        1139         0.5838
+goals model (Poisson)                 0.0487  0.3169   0.7207       719       0.5076       7148        0.5263       2497        0.5999          74         0.7703
 
 Per league:
-       rps: Elo only  rps: logistic, all features  rps: boosting, all features  rps: bookmakers  btts brier: logistic  btts rate
-model                                                                                                                           
-E0            0.2011                       0.1992                       0.2012           0.1936                0.2491     0.5532
-SP1           0.1974                       0.1966                       0.1958           0.1921                0.2497     0.5184
-I1            0.1964                       0.1953                       0.1967           0.1909                0.2510     0.5137
-D1            0.2030                       0.2018                       0.2030           0.1966                0.2391     0.6007
-F1            0.2063                       0.2047                       0.2067           0.2016                0.2464     0.5513
-POL           0.2183                       0.2181                       0.2180           0.2115                0.2498     0.5399
+       rps: Elo only  rps: logistic, all features  rps: goals model (Poisson)  rps: bookmakers  btts brier: logistic, all features  btts brier: logistic, one model per league  btts brier: goals model (Poisson)  btts rate
+model                                                                                                                                                                                                                       
+E0            0.2011                       0.1998                      0.1989           0.1936                              0.2503                                      0.2515                             0.2478     0.5532
+SP1           0.1974                       0.1970                      0.1970           0.1921                              0.2499                                      0.2528                             0.2492     0.5184
+I1            0.1964                       0.1952                      0.1951           0.1909                              0.2507                                      0.2560                             0.2489     0.5137
+D1            0.2030                       0.2021                      0.2023           0.1966                              0.2387                                      0.2452                             0.2384     0.6007
+F1            0.2063                       0.2052                      0.2048           0.2016                              0.2470                                      0.2542                             0.2486     0.5513
+POL           0.2183                       0.2184                      0.2180           0.2115                              0.2499                                      0.2540                             0.2485     0.5399
 
 Start of the season (1439 matches) vs the rest (8999 matches):
                         rps: first 5 rounds  rps: rest of season
 model                                                           
 Elo only                             0.1960               0.2044
-logistic, all features               0.1955               0.2031
+logistic, all features               0.1958               0.2035
 bookmakers                           0.1910               0.1982
 
 Confident picks:
                                           matches  accuracy
 model                                                      
-logistic, all features, favourite >= 50%     5243    0.6094
+logistic, all features, favourite >= 50%     5239    0.6077
 bookmakers, favourite >= 50%                 5091    0.6368
-BTTS yes >= 50% (logistic)                   8031    0.5490
-logistic, all features, favourite >= 60%     2724    0.6905
+BTTS yes >= 50% (logistic)                   7772    0.5502
+logistic, all features, favourite >= 60%     2734    0.6898
 bookmakers, favourite >= 60%                 2615    0.7170
-BTTS yes >= 60% (logistic)                   1008    0.6171
-logistic, all features, favourite >= 70%     1124    0.7562
+BTTS yes >= 60% (logistic)                   1113    0.6244
+logistic, all features, favourite >= 70%     1152    0.7535
 bookmakers, favourite >= 70%                 1131    0.7843
-BTTS yes >= 70% (logistic)                     11    0.7273
+BTTS yes >= 70% (logistic)                     19    0.6316
 
 Saved results/model_comparison.csv

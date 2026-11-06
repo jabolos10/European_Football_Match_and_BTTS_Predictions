@@ -61,11 +61,15 @@ def season_code(start_year):
     return f"{start_year % 100:02d}{(start_year + 1) % 100:02d}"
 
 
-def download(url, filename):
-    """Download a file once and keep it in data/raw/football_data/. Returns None if it doesn't exist."""
+def download(url, filename, refresh=False):
+    """Download a file and keep it in data/raw/football_data/. Returns None if it doesn't exist.
+
+    Old seasons never change, so they are downloaded only once. Files that still change
+    (the current season) are downloaded again every time with refresh=True.
+    """
     RAW_DIR.mkdir(parents=True, exist_ok=True)
     path = RAW_DIR / filename
-    if not path.exists():
+    if refresh or not path.exists():
         response = requests.get(url, timeout=30, headers={"User-Agent": "Mozilla/5.0"})
         if response.status_code == 404:
             return None
@@ -120,7 +124,8 @@ def load_main_league(country, league):
     frames = []
     for year in range(FIRST_SEASON, LAST_SEASON + 1):
         code = season_code(year)
-        path = download(MAIN_URL.format(code=code, league=league), f"{league}_{code}.csv")
+        path = download(MAIN_URL.format(code=code, league=league), f"{league}_{code}.csv",
+                        refresh=(year == LAST_SEASON))
         if path is None:
             print(f"  {league} {code}: not found, skipped")
             continue
@@ -136,7 +141,7 @@ def load_main_league(country, league):
 
 
 def load_extra_league(country, league):
-    path = download(EXTRA_URL.format(league=league), f"{league}.csv")
+    path = download(EXTRA_URL.format(league=league), f"{league}.csv", refresh=True)  # includes the current season
     if path is None:
         print(f"  {league}: not found, skipped")
         return pd.DataFrame()

@@ -8,8 +8,11 @@ Two questions, both tested the same honest way as src/backtest.py
 
 Prints:
   - which feature groups help (added one by one, logistic regression),
+  - the goals model (Poisson): expected goals of both teams -> result and BTTS,
+  - how decisive the BTTS forecasts are (do they spread out, and are they right when they do?),
   - logistic regression vs gradient boosting vs Elo only vs bookmakers,
   - results per league,
+  - the start of the season (first 5 rounds, after summer transfers) vs the rest,
   - "confident picks": how often the model is right when it is sure.
 
 Run from the project root:  python -m src.evaluate_models
@@ -29,13 +32,14 @@ from sklearn.preprocessing import StandardScaler
 from src.backtest import FIRST_TRAIN_SEASON, LEAGUES, MATCHES_FILE, TEST_SEASONS
 from src.elo import EloParams, compute_elo
 from src.features import add_features, feature_groups
+from src.goals_model import goals_regressor, markets
 from src.metrics import accuracy, brier, log_loss, market_probabilities, outcome_index, rps
 
 PARAMS_FILE = Path("results/elo_params.json")
 RESULTS_DIR = Path("results")
 
 
-# ------- models ---------
+# ---------- models ----------
 
 def base_rates():
     """Always the same %: how often each outcome happened in the training seasons."""
@@ -54,7 +58,7 @@ def boosting():
         l2_regularization=1.0, early_stopping=True, random_state=0)
 
 
-# ------testing -------
+# ---------- testing ----------
 
 def walk_forward(df, columns, make_model, target, n_classes):
     """For every test season: train on all earlier seasons, predict that season.
@@ -73,6 +77,31 @@ def walk_forward(df, columns, make_model, target, n_classes):
     return probs
 
 
+def walk_forward_per_league(df, columns, make_model, target, n_classes):
+    """Like walk_forward, but a separate model for every league (each league has its own habits)."""
+    probs = np.full((len(df), n_classes), np.nan)
+    for code in df["league"].unique():
+        in_league = (df["league"] == code).to_numpy()
+        probs[in_league] = walk_forward(df[in_league], columns, make_model, target, n_classes)
+    return probs
+
+
+def walk_forward_goals(df, columns):
+    """Goals model: for every test season, train two Poisson regressions on all earlier seasons
+    (home goals and away goals) and turn the expected goals into probabilities."""
+    home_rate = np.full(len(df), np.nan)
+    away_rate = np.full(len(df), np.nan)
+    for season in TEST_SEASONS:
+        train = ((df["season"] >= FIRST_TRAIN_SEASON) & (df["season"] < season)).to_numpy()
+        test = (df["season"] == season).to_numpy()
+        usable = [c for c in columns if df.loc[train, c].notna().any()]
+        home_model = goals_regressor().fit(df.loc[train, usable], df.loc[train, "home_goals"])
+        away_model = goals_regressor().fit(df.loc[train, usable], df.loc[train, "away_goals"])
+        home_rate[test] = home_model.predict(df.loc[test, usable])
+        away_rate[test] = away_model.predict(df.loc[test, usable])
+    return home_rate, away_rate
+
+
 def result_scores(probs, outcomes):
     return {"rps": rps(probs, outcomes), "log_loss": log_loss(probs, outcomes),
             "accuracy": accuracy(probs, outcomes)}
@@ -88,7 +117,7 @@ def print_table(title, rows):
     print(pd.DataFrame(rows).set_index("model").round(4).to_string())
 
 
-# --------main -------
+# ---------- main ----------
 
 def load_data():
     params = EloParams(**json.loads(PARAMS_FILE.read_text())) if PARAMS_FILE.exists() else EloParams()
@@ -128,6 +157,9 @@ def main():
         "boosting, all features": walk_forward(df, all_columns, boosting, "outcome", 3),
     }
     forecasts = {name: probs[test] for name, probs in forecasts.items()}
+    home_rate, away_rate = walk_forward_goals(df, all_columns)
+    goals = markets(home_rate[test], away_rate[test])
+    forecasts["goals model (Poisson)"] = np.column_stack([goals["home_win"], goals["draw"], goals["away_win"]])
     tested = df[test]
     forecasts["bookmakers"] = market_probabilities(tested["odds_home"], tested["odds_draw"], tested["odds_away"])
     print_table("Match result (home / draw / away):",
@@ -138,9 +170,24 @@ def main():
         "base rates": walk_forward(df, ["elo_diff"], base_rates, "btts", 2)[test],
         "logistic, all features": walk_forward(df, all_columns, logistic, "btts", 2)[test],
         "boosting, all features": walk_forward(df, all_columns, boosting, "btts", 2)[test],
+        "logistic, one model per league": walk_forward_per_league(df, all_columns, logistic, "btts", 2)[test],
+        "goals model (Poisson)": np.column_stack([1 - goals["btts_yes"], goals["btts_yes"]]),
     }
     print_table("Both teams to score (yes / no):",
                 [{"model": name, **btts_scores(p, btts)} for name, p in btts_forecasts.items()])
+
+    # 3b) Are the BTTS forecasts decisive - and right when they are?
+    rows = []
+    for name, p in btts_forecasts.items():
+        yes = p[:, 1]
+        row = {"model": name, "spread (std)": yes.std(), "lowest": yes.min(), "highest": yes.max()}
+        for low, high in [(0, 0.45), (0.45, 0.55), (0.55, 0.65), (0.65, 1.01)]:
+            in_bin = (yes >= low) & (yes < high)
+            label = f"{low:.0%}-{min(high, 1):.0%}"
+            row[f"{label} n"] = int(in_bin.sum())
+            row[f"{label} real"] = btts[in_bin].mean() if in_bin.any() else np.nan
+        rows.append(row)
+    print_table("BTTS forecasts: how spread out, and how often BTTS really happened in each range:", rows)
 
     # 4) Per league
     leagues = tested["league"].to_numpy()
@@ -148,14 +195,15 @@ def main():
     for code in LEAGUES:
         mask = leagues == code
         row = {"model": code}
-        for name in ["Elo only", "logistic, all features", "boosting, all features", "bookmakers"]:
+        for name in ["Elo only", "logistic, all features", "goals model (Poisson)", "bookmakers"]:
             row[f"rps: {name}"] = rps(forecasts[name][mask], outcomes[mask])
-        row["btts brier: logistic"] = brier(btts_forecasts["logistic, all features"][mask, 1], btts[mask])
+        for name in ["logistic, all features", "logistic, one model per league", "goals model (Poisson)"]:
+            row[f"btts brier: {name}"] = brier(btts_forecasts[name][mask, 1], btts[mask])
         row["btts rate"] = btts[mask].mean()
         per_league.append(row)
     print_table("Per league:", per_league)
 
-        # 5) Start of the season (after summer transfers) vs the rest
+    # 5) Start of the season (after summer transfers) vs the rest
     early = tested["home_season_games"].to_numpy() < 5
     rows = []
     for name in ["Elo only", "logistic, all features", "bookmakers"]:
