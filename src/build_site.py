@@ -332,7 +332,7 @@ footer a {{ color:var(--accent); }}
 {record}
 <footer>Model: own Elo ratings with form, shots, home/away and head-to-head features · logistic regression for the result,
 Poisson goals model for both teams to score · data from football-data.co.uk ·
-<a href="https://github.com/jabolos10/Football_Win_and_BTTS_Prediction_UCL_EPL_LaLiga">code on GitHub</a></footer>
+<a href="https://github.com/jabolos10/European_Football_Match_and_BTTS_Predictions">code on GitHub</a></footer>
 </main>
 <script>
 document.querySelectorAll('.pill').forEach(function (pill) {{
