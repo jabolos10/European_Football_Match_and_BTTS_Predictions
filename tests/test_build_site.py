@@ -61,6 +61,7 @@ def test_badge_uses_crest_with_initials_fallback(monkeypatch):
 
 def test_model_duel_compares_only_matches_both_models_predicted():
     settled = pd.DataFrame({
+        "league": ["E0", "E0", "POL", "SP1"],
         "outcome": [0, 1, 2, 0],          # home win, draw, away win, home win
         "btts": [1, 0, 1, 1],
         "home_win": [0.5, 0.5, 0.2, 0.6], "draw": [0.3, 0.3, 0.3, 0.2], "away_win": [0.2, 0.2, 0.5, 0.2],

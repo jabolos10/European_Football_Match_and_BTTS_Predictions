@@ -27,7 +27,7 @@ from src.features import add_features, feature_groups
 from src.goals_model import goals_regressor, markets
 from src.load_domestic_leagues import download, read_csv
 from src.metrics import market_probabilities, outcome_index
-from src import ratings_model
+from src import international, ratings_model
 
 PARAMS_FILE = Path("results/elo_params.json")
 OUT_FILE = Path("results/predictions_upcoming.csv")
@@ -114,10 +114,12 @@ def main():
     upcoming["btts_yes"] = btts_model.predict_proba(upcoming[usable])[:, list(btts_model.classes_).index(1)]
 
     # Goals model: expected goals of both teams -> BTTS and "win + BTTS" from the score table
-    home_goals_model = goals_regressor().fit(train[usable], train["home_goals"])
-    away_goals_model = goals_regressor().fit(train[usable], train["away_goals"])
-    upcoming["xg_home"] = home_goals_model.predict(upcoming[usable])
-    upcoming["xg_away"] = away_goals_model.predict(upcoming[usable])
+    # (+ derby: derbies have slightly fewer goals than the other features suggest, see src/derbies.py)
+    goal_columns = usable + ["derby"]
+    home_goals_model = goals_regressor().fit(train[goal_columns], train["home_goals"])
+    away_goals_model = goals_regressor().fit(train[goal_columns], train["away_goals"])
+    upcoming["xg_home"] = home_goals_model.predict(upcoming[goal_columns])
+    upcoming["xg_away"] = away_goals_model.predict(upcoming[goal_columns])
     goals = markets(upcoming["xg_home"], upcoming["xg_away"])
     upcoming["btts_goals_model"] = goals["btts_yes"]
     upcoming["home_win_and_btts"] = goals["home_win_and_btts"]
@@ -132,16 +134,29 @@ def main():
     out = upcoming[["date", "kick_off", "league", "home_team", "away_team", "home_win", "draw", "away_win",
                     "home_win_ratings", "draw_ratings", "away_win_ratings",
                     "btts_yes", "btts_goals_model", "btts_ratings_model", "xg_home", "xg_away",
-                    "home_win_and_btts", "away_win_and_btts"]].copy()
+                    "home_win_and_btts", "away_win_and_btts", "derby"]].copy()
     out["date"] = out["date"].dt.date
+    club_matches = out.copy()
+
+    # National teams (hand-typed fixtures in data/international_fixtures.csv); a problem there
+    # must never stop the club predictions
+    try:
+        national = international.predict_upcoming(date.today())
+    except Exception as error:  # noqa: BLE001
+        print(f"International predictions skipped: {error}")
+        national = pd.DataFrame()
+    if not national.empty:
+        national["derby"] = 0
+        out = pd.concat([out, national[out.columns]], ignore_index=True)
+
     OUT_FILE.parent.mkdir(exist_ok=True)
     out.round(3).to_csv(OUT_FILE, index=False)
 
     # Print per league, with the bookmakers' % next to ours (only on screen, not saved)
     market = market_probabilities(upcoming["odds_home"], upcoming["odds_draw"], upcoming["odds_away"])
-    out["book_home"], out["book_draw"], out["book_away"] = market.T
+    club_matches["book_home"], club_matches["book_draw"], club_matches["book_away"] = market.T
     for code in LEAGUES:
-        games = out[out["league"] == code]
+        games = club_matches[club_matches["league"] == code]
         if games.empty:
             continue
         print(f"\n{LEAGUE_NAMES[code]}")
@@ -157,6 +172,12 @@ def main():
                   f"  |            {g.book_home:5.0%} {g.book_draw:5.0%} {g.book_away:5.0%}")
     print("\nBTTS = logistic regression, BTTS* = goals model, BTTS+ = ratings model, xG = expected goals home-away,"
           "\n1&BTTS / 2&BTTS = home / away win and both teams score")
+    if not national.empty:
+        print("\nNational teams")
+        for g in national.itertuples():
+            match = f"{g.home_team} - {g.away_team}"
+            print(f"  {g.date!s:10} {g.kick_off!s:5}  {match:38} {g.home_win:5.0%} {g.draw:5.0%} {g.away_win:5.0%}"
+                  f"  BTTS {g.btts_goals_model:4.0%}  xG {g.xg_home:.1f}-{g.xg_away:.1f}")
     print(f"\nSaved {len(out)} matches to {OUT_FILE}")
 
 

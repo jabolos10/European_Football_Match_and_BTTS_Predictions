@@ -22,6 +22,8 @@ Feature groups (added one by one in src/evaluate_models.py to see what helps):
 import numpy as np
 import pandas as pd
 
+from src.derbies import is_derby
+
 FORM_MATCHES = 5
 SCORING_MATCHES = 10
 SHOTS_MATCHES = 10
@@ -190,6 +192,7 @@ def add_features(matches, leagues):
 
     for code in leagues:
         df[f"league_{code}"] = (df["league"] == code).astype(int)
+    df["derby"] = [int(is_derby(home, away)) for home, away in zip(df["home_team"], df["away_team"])]
     weekday = df["date"].dt.day_name()
     for day in DAYS:
         df[f"day_{day}"] = (weekday == day).astype(int)

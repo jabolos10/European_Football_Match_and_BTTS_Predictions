@@ -1,4 +1,5 @@
-"""Elo ratings for football clubs, computed only from match results.
+"""
+Elo ratings for football clubs, computed only from match results.
 
 How it works:
   - every team has one number, its rating (a typical team is around 1500),

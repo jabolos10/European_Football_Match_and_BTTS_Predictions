@@ -20,6 +20,7 @@ from zoneinfo import ZoneInfo
 import numpy as np
 import pandas as pd
 
+from src import international
 from src.metrics import outcome_index, rps
 
 PREDICTIONS_FILE = Path("results/predictions_upcoming.csv")
@@ -37,6 +38,7 @@ LEAGUES = {
     "D1": ("Bundesliga", "Germany", "🇩🇪", "#f43f5e"),
     "F1": ("Ligue 1", "France", "🇫🇷", "#22d3ee"),
     "POL": ("Ekstraklasa", "Poland", "🇵🇱", "#34d399"),
+    "INT": ("National teams", "Nations League", "🌍", "#fbbf24"),
 }
 SOURCE_TZ = ZoneInfo("Europe/London")   # football-data.co.uk gives kick-off times in UK time
 SITE_TZ = ZoneInfo("Europe/Warsaw")     # the site shows Central European time
@@ -77,6 +79,10 @@ def update_log(now):
 def settle(log):
     """Attach real results to logged predictions of matches that have been played."""
     results = pd.read_csv(MATCHES_FILE, usecols=KEY + ["home_goals", "away_goals"])
+    try:  # national teams come from a separate results file
+        results = pd.concat([results, international.results_for_settling()], ignore_index=True)
+    except Exception as error:  # noqa: BLE001
+        print(f"International results not available: {error}")
     settled = log.merge(results, on=KEY, how="inner")
     settled["outcome"] = outcome_index(settled["home_goals"], settled["away_goals"])
     settled["btts"] = ((settled["home_goals"] > 0) & (settled["away_goals"] > 0)).astype(int)
@@ -104,7 +110,10 @@ def summary(settled):
 
 def model_duel(settled):
     """Compare both models on the same settled matches (only those both models predicted)."""
-    both = settled.dropna(subset=MODEL_COLUMNS) if not settled.empty else settled
+    if settled.empty:
+        return None
+    # national teams have only one model (same numbers in both variants), so they are left out
+    both = settled[settled["league"] != international.LEAGUE_CODE].dropna(subset=MODEL_COLUMNS)
     if both.empty:
         return None
     outcome, happened = both["outcome"].to_numpy(), both["btts"].to_numpy()
@@ -152,9 +161,22 @@ def initials_badge(team, hidden=False):
     return f'<span class="crest" style="--h:{hue}"{" hidden" if hidden else ""}>{escape(letters.upper())}</span>'
 
 
+NATIONAL_FLAGS = {
+    "England": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "Wales": "🏴󠁧󠁢󠁷󠁬󠁳󠁿", "Scotland": "🏴󠁧󠁢󠁳󠁣󠁴󠁿", "Northern Ireland": "🇬🇧",
+    "Spain": "🇪🇸", "France": "🇫🇷", "Germany": "🇩🇪", "Italy": "🇮🇹", "Portugal": "🇵🇹", "Netherlands": "🇳🇱",
+    "Belgium": "🇧🇪", "Croatia": "🇭🇷", "Czech Republic": "🇨🇿", "Turkey": "🇹🇷", "Greece": "🇬🇷", "Serbia": "🇷🇸",
+    "Denmark": "🇩🇰", "Norway": "🇳🇴", "Sweden": "🇸🇪", "Poland": "🇵🇱", "Romania": "🇷🇴",
+    "Bosnia and Herzegovina": "🇧🇦", "Switzerland": "🇨🇭", "Austria": "🇦🇹", "Hungary": "🇭🇺", "Ukraine": "🇺🇦",
+    "Slovakia": "🇸🇰", "Slovenia": "🇸🇮", "Republic of Ireland": "🇮🇪", "Finland": "🇫🇮", "Iceland": "🇮🇸",
+    "Albania": "🇦🇱", "Georgia": "🇬🇪", "Israel": "🇮🇱", "Argentina": "🇦🇷", "Brazil": "🇧🇷",
+}
+
+
 def badge(team):
     """The club crest (linked from football-data.org) or, without one, the initials badge.
     If the image fails to load in the browser, the initials badge is shown instead."""
+    if team in NATIONAL_FLAGS:
+        return f'<span class="crest flag">{NATIONAL_FLAGS[team]}</span>'
     url = CRESTS.get(team)
     if not url:
         return initials_badge(team)
@@ -232,9 +254,13 @@ def check_chips(g):
     return "".join(chips)
 
 
+def derby_badge(g):
+    return '<span class="derby">Derby</span>' if value_of(g, "derby") == 1 else ""
+
+
 def match_card(g, time_text):
     return (
-        f'<article class="match"><div class="when">{time_text}</div>'
+        f'<article class="match"><div class="when">{time_text}{derby_badge(g)}</div>'
         f'<div class="teams">{team_line(g.home_team, f"<span class=xg>{g.xg_home:.1f}</span>")}'
         f'{team_line(g.away_team, f"<span class=xg>{g.xg_away:.1f}</span>")}</div>'
         f'{model_bars(g)}{btts_tiles(g)}</article>')
@@ -387,6 +413,9 @@ h2 small {{ display:block; font:500 13px Inter, sans-serif; color:var(--muted); 
   letter-spacing:.02em; color:#fff; background:linear-gradient(140deg, hsl(var(--h) 55% 45%), hsl(calc(var(--h) + 40) 60% 28%));
   box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.18); }}
 .crest[hidden] {{ display:none; }}
+.crest.flag {{ background:none; box-shadow:none; font-size:22px; }}
+.derby {{ display:block; width:max-content; margin-top:5px; font:700 9.5px Inter, sans-serif; letter-spacing:.08em; text-transform:uppercase;
+  color:#0a0c10; background:#ff7a45; border-radius:5px; padding:2px 5px; }}
 .crest-img {{ flex:none; width:26px; height:26px; object-fit:contain; }}
 .name {{ font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }}
 .xg, .score {{ margin-left:auto; font-variant-numeric:tabular-nums; }}
@@ -459,7 +488,8 @@ body:not(.use-ratings) .m-ratings, body.use-ratings .m-goals {{ display:none; }}
 {record}
 <footer>Model: own Elo ratings with form, shots, home/away and head-to-head features · two variants side by side.
 Classic: logistic regression for the result, Poisson goals model for both teams to score. Ratings: attack/defence ratings
-with the Dixon-Coles correction (result averaged with Classic) · data from football-data.co.uk ·
+with the Dixon-Coles correction (result averaged with Classic). National teams: own Elo for national teams and a
+Poisson goals model · results of national teams from github.com/martj42/international_results · data from football-data.co.uk ·
 <a href="https://github.com/jabolos10/European_Football_Match_and_BTTS_Predictions">code on GitHub</a></footer>
 </main>
 <script>
