@@ -254,13 +254,16 @@ def check_chips(g):
     return "".join(chips)
 
 
-def derby_badge(g):
-    return '<span class="derby">Derby</span>' if value_of(g, "derby") == 1 else ""
+def match_open(g):
+    """Opening tag of a match card; derbies get an orange frame with a label on the top border."""
+    if value_of(g, "derby") == 1:
+        return '<article class="match derby"><span class="derby-tag">⚔ Derby</span>'
+    return '<article class="match">'
 
 
 def match_card(g, time_text):
     return (
-        f'<article class="match"><div class="when">{time_text}{derby_badge(g)}</div>'
+        f'{match_open(g)}<div class="when">{time_text}</div>'
         f'<div class="teams">{team_line(g.home_team, f"<span class=xg>{g.xg_home:.1f}</span>")}'
         f'{team_line(g.away_team, f"<span class=xg>{g.xg_away:.1f}</span>")}</div>'
         f'{model_bars(g)}{btts_tiles(g)}</article>')
@@ -292,7 +295,7 @@ def upcoming_html(predictions):
             by_day.setdefault(day, []).append(match_card(g, time_text))
         days = "".join(f'<h4 class="day">{day_title(day)}</h4><div class="grid">{"".join(cards)}</div>'
                        for day, cards in sorted(by_day.items()))
-        sections.append(f'<section class="league" data-league="{code}" style="--lg:{LEAGUES[code][3]}">'
+        sections.append(f'<section class="league{section_hidden(code)}" data-league="{code}" style="--lg:{LEAGUES[code][3]}">'
                         f'{league_header(code, len(games), "matches")}{days}</section>')
     return "".join(sections) or '<p class="empty">No upcoming matches right now.</p>'
 
@@ -344,15 +347,22 @@ def record_html(settled, stats, duel):
         if games.empty:
             continue
         cards = "".join(result_card(g) for g in games.itertuples())
-        sections.append(f'<section class="league" data-league="{code}" style="--lg:{LEAGUES[code][3]}">'
+        sections.append(f'<section class="league{section_hidden(code)}" data-league="{code}" style="--lg:{LEAGUES[code][3]}">'
                         f'{league_header(code, len(games), "latest")}<div class="grid">{cards}</div></section>')
     return stats_html + duel_html(duel) + "".join(sections)
+
+
+def section_hidden(code):
+    """National teams are a separate view: hidden until their button is clicked."""
+    return " hidden" if code == international.LEAGUE_CODE else ""
 
 
 def filters_html(codes):
     buttons = ['<button class="pill active" data-filter="all">All leagues</button>']
     for code in codes:
         name, _, flag, color = LEAGUES[code]
+        if code == international.LEAGUE_CODE:
+            buttons.append('<span class="pill-sep"></span>')  # national teams: a separate view, set apart
         buttons.append(f'<button class="pill" data-filter="{code}" style="--lg:{color}">{flag} {name}</button>')
     switch = "".join(f'<button class="model{" active" if i == 0 else ""}" data-model="{key}">{name}'
                      f'{" <em>NEW</em>" if key == "ratings" else ""}</button>'
@@ -414,8 +424,10 @@ h2 small {{ display:block; font:500 13px Inter, sans-serif; color:var(--muted); 
   box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.18); }}
 .crest[hidden] {{ display:none; }}
 .crest.flag {{ background:none; box-shadow:none; font-size:22px; }}
-.derby {{ display:block; width:max-content; margin-top:5px; font:700 9.5px Inter, sans-serif; letter-spacing:.08em; text-transform:uppercase;
-  color:#0a0c10; background:#ff7a45; border-radius:5px; padding:2px 5px; }}
+.match {{ position:relative; }}
+.match.derby, .match.derby:hover {{ border-color:rgba(255,122,69,.6); }}
+.derby-tag {{ position:absolute; top:-8px; left:50%; transform:translateX(-50%); font:800 10px/1 Inter, sans-serif; letter-spacing:.12em;
+  text-transform:uppercase; color:#ff7a45; background:var(--surface); padding:2px 8px; border-radius:6px; white-space:nowrap; }}
 .crest-img {{ flex:none; width:26px; height:26px; object-fit:contain; }}
 .name {{ font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }}
 .xg, .score {{ margin-left:auto; font-variant-numeric:tabular-nums; }}
@@ -462,6 +474,7 @@ body:not(.use-ratings) .m-ratings, body.use-ratings .m-goals {{ display:none; }}
 .duel-row span.lead {{ background:rgba(200,245,66,.13); color:var(--accent); }}
 .duel-row.top {{ border-top:0; padding-bottom:0; }}
 .duel-row.top span {{ font:600 11px Inter, sans-serif; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }}
+.pill-sep {{ width:1px; align-self:stretch; background:var(--line); margin:4px 6px; }}
 .hidden {{ display:none; }}
 @media (max-width:620px) {{
   .grid {{ grid-template-columns:1fr; }}
@@ -498,7 +511,8 @@ document.querySelectorAll('.pill').forEach(function (pill) {{
     document.querySelectorAll('.pill').forEach(function (p) {{ p.classList.toggle('active', p === pill); }});
     var league = pill.dataset.filter;
     document.querySelectorAll('.league').forEach(function (section) {{
-      section.classList.toggle('hidden', league !== 'all' && section.dataset.league !== league);
+      var show = league === 'all' ? section.dataset.league !== 'INT' : section.dataset.league === league;
+      section.classList.toggle('hidden', !show);
     }});
   }});
 }});
