@@ -47,3 +47,12 @@ def test_settle_matches_predictions_with_results(tmp_path, monkeypatch):
     assert len(settled) == 1              # the second match is not played yet
     assert bool(settled.loc[0, "pick_right"])
     assert settled.loc[0, "btts"] == 1
+
+
+def test_badge_uses_crest_with_initials_fallback(monkeypatch):
+    from src import build_site
+    monkeypatch.setattr(build_site, "CRESTS", {"Man City": "https://crests.football-data.org/65.png"})
+    with_crest = build_site.badge("Man City")
+    assert '<img class="crest-img" src="https://crests.football-data.org/65.png"' in with_crest
+    assert '<span class="crest"' in with_crest and " hidden>" in with_crest  # fallback if the image fails
+    assert build_site.badge("Legia") == build_site.initials_badge("Legia")  # no crest -> initials only

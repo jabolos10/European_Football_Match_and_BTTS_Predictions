@@ -1,0 +1,97 @@
+league,team,api_name,crest_url,similarity
+E0,Arsenal,Arsenal FC,https://crests.football-data.org/57.png,1.0
+E0,Aston Villa,Aston Villa FC,https://crests.football-data.org/58.png,1.0
+E0,Bournemouth,AFC Bournemouth,https://crests.football-data.org/bournemouth.png,1.0
+E0,Brentford,Brentford FC,https://crests.football-data.org/402.png,1.0
+E0,Brighton,Brighton & Hove Albion FC,https://crests.football-data.org/397.png,0.93
+E0,Chelsea,Chelsea FC,https://crests.football-data.org/61.png,1.0
+E0,Coventry,Coventry City FC,https://crests.football-data.org/1076.png,0.93
+E0,Crystal Palace,Crystal Palace FC,https://crests.football-data.org/354.png,1.0
+E0,Everton,Everton FC,https://crests.football-data.org/62.png,1.0
+E0,Fulham,Fulham FC,https://crests.football-data.org/63.png,1.0
+E0,Hull,Hull City AFC,https://crests.football-data.org/322.png,0.88
+E0,Ipswich,Ipswich Town FC,https://crests.football-data.org/349.png,0.92
+E0,Leeds,Leeds United FC,https://crests.football-data.org/341.png,0.88
+E0,Liverpool,Liverpool FC,https://crests.football-data.org/64.png,1.0
+E0,Man City,Manchester City FC,https://crests.football-data.org/65.png,1.0
+E0,Man United,Manchester United FC,https://crests.football-data.org/66.png,1.0
+E0,Newcastle,Newcastle United FC,https://crests.football-data.org/67.png,1.0
+E0,Nott'm Forest,Nottingham Forest FC,https://crests.football-data.org/351.png,1.0
+E0,Sunderland,Sunderland AFC,https://crests.football-data.org/71.png,1.0
+E0,Tottenham,Tottenham Hotspur FC,https://crests.football-data.org/73.png,1.0
+SP1,Alaves,Deportivo Alavés,https://crests.football-data.org/263.png,1.0
+SP1,Ath Bilbao,Athletic Club,https://crests.football-data.org/77.png,0.38
+SP1,Ath Madrid,Club Atlético de Madrid,https://crests.football-data.org/78.png,0.7
+SP1,Barcelona,FC Barcelona,https://crests.football-data.org/81.png,1.0
+SP1,Betis,Real Betis Balompié,https://crests.football-data.org/90.png,1.0
+SP1,Celta,RC Celta de Vigo,https://crests.football-data.org/558.png,1.0
+SP1,Elche,Elche CF,https://crests.football-data.org/285.png,1.0
+SP1,Espanol,RCD Espanyol de Barcelona,https://crests.football-data.org/80.png,1.0
+SP1,Getafe,Getafe CF,https://crests.football-data.org/82.png,1.0
+SP1,La Coruna,RC Deportivo La Coruña,https://crests.football-data.org/560.png,0.86
+SP1,Levante,Levante UD,https://crests.football-data.org/88.png,1.0
+SP1,Malaga,Málaga CF,https://crests.football-data.org/84.png,1.0
+SP1,Osasuna,CA Osasuna,https://crests.football-data.org/79.png,1.0
+SP1,Real Madrid,Real Madrid CF,https://crests.football-data.org/86.png,1.0
+SP1,Santander,Real Racing Club de Santander,https://crests.football-data.org/5335.png,1.0
+SP1,Sevilla,Sevilla FC,https://crests.football-data.org/559.png,1.0
+SP1,Sociedad,Real Sociedad de Fútbol,https://crests.football-data.org/92.png,1.0
+SP1,Valencia,Valencia CF,https://crests.football-data.org/95.png,1.0
+SP1,Vallecano,Rayo Vallecano de Madrid,https://crests.football-data.org/87.png,1.0
+SP1,Villarreal,Villarreal CF,https://crests.football-data.org/94.png,1.0
+I1,Atalanta,Atalanta BC,https://crests.football-data.org/102.png,1.0
+I1,Bologna,Bologna FC 1909,https://crests.football-data.org/103.png,1.0
+I1,Cagliari,Cagliari Calcio,https://crests.football-data.org/104.png,1.0
+I1,Como,Como 1907,https://crests.football-data.org/7397.png,1.0
+I1,Fiorentina,ACF Fiorentina,https://crests.football-data.org/99.png,1.0
+I1,Frosinone,Frosinone Calcio,https://crests.football-data.org/470.png,1.0
+I1,Genoa,Genoa CFC,https://crests.football-data.org/107.png,1.0
+I1,Inter,FC Internazionale Milano,https://crests.football-data.org/108.png,0.94
+I1,Juventus,Juventus FC,https://crests.football-data.org/109.png,1.0
+I1,Lazio,SS Lazio,https://crests.football-data.org/110.png,1.0
+I1,Lecce,US Lecce,https://crests.football-data.org/5890.png,1.0
+I1,Milan,AC Milan,https://crests.football-data.org/98.png,1.0
+I1,Monza,AC Monza,https://crests.football-data.org/5911.png,1.0
+I1,Napoli,SSC Napoli,https://crests.football-data.org/113.png,1.0
+I1,Parma,Parma Calcio 1913,https://crests.football-data.org/112.png,1.0
+I1,Roma,AS Roma,https://crests.football-data.org/100.png,1.0
+I1,Sassuolo,US Sassuolo Calcio,https://crests.football-data.org/471.png,1.0
+I1,Torino,Torino FC,https://crests.football-data.org/586.png,1.0
+I1,Udinese,Udinese Calcio,https://crests.football-data.org/115.png,1.0
+I1,Venezia,Venezia FC,https://crests.football-data.org/454.png,1.0
+D1,Augsburg,FC Augsburg,https://crests.football-data.org/16.png,1.0
+D1,Bayern Munich,FC Bayern München,https://crests.football-data.org/5.png,0.62
+D1,Dortmund,Borussia Dortmund,https://crests.football-data.org/4.png,1.0
+D1,Ein Frankfurt,Eintracht Frankfurt,https://crests.football-data.org/19.png,1.0
+D1,Elversberg,SV 07 Elversberg,https://crests.football-data.org/719.png,1.0
+D1,FC Koln,1. FC Köln,https://crests.football-data.org/1.png,0.5
+D1,Freiburg,SC Freiburg,https://crests.football-data.org/17.png,1.0
+D1,Hamburg,Hamburger SV,https://crests.football-data.org/7.png,0.26
+D1,Hoffenheim,TSG 1899 Hoffenheim,https://crests.football-data.org/2.png,1.0
+D1,Leverkusen,Bayer 04 Leverkusen,https://crests.football-data.org/3.png,1.0
+D1,M'gladbach,Borussia Mönchengladbach,https://crests.football-data.org/18.png,0.93
+D1,Mainz,1. FSV Mainz 05,https://crests.football-data.org/15.png,1.0
+D1,Paderborn,SC Paderborn 07,https://crests.football-data.org/29.png,1.0
+D1,RB Leipzig,RB Leipzig,https://crests.football-data.org/721.png,1.0
+D1,Schalke 04,FC Schalke 04,https://crests.football-data.org/6.png,1.0
+D1,Stuttgart,VfB Stuttgart,https://crests.football-data.org/10.png,1.0
+D1,Union Berlin,1. FC Union Berlin,https://crests.football-data.org/28.png,1.0
+D1,Werder Bremen,SV Werder Bremen,https://crests.football-data.org/12.png,1.0
+F1,Angers,Angers SCO,https://crests.football-data.org/532.png,0.92
+F1,Auxerre,AJ Auxerre,https://crests.football-data.org/519.png,1.0
+F1,Brest,Stade Brestois 29,https://crests.football-data.org/512.png,1.0
+F1,Le Havre,Le Havre AC,https://crests.football-data.org/533.png,1.0
+F1,Le Mans,Le Mans FC,https://crests.football-data.org/535.png,1.0
+F1,Lens,Racing Club de Lens,https://crests.football-data.org/546.png,1.0
+F1,Lille,Lille OSC,https://crests.football-data.org/521.png,1.0
+F1,Lorient,FC Lorient,https://crests.football-data.org/525.png,1.0
+F1,Lyon,Olympique Lyonnais,https://crests.football-data.org/523.png,0.83
+F1,Marseille,Olympique de Marseille,https://crests.football-data.org/516.png,1.0
+F1,Monaco,AS Monaco FC,https://crests.football-data.org/548.png,1.0
+F1,Nice,OGC Nice,https://crests.football-data.org/522.png,1.0
+F1,Paris FC,Paris FC,https://crests.football-data.org/1045.png,1.0
+F1,Paris SG,Paris Saint-Germain FC,https://crests.football-data.org/524.png,0.51
+F1,Rennes,Stade Rennais FC 1901,https://crests.football-data.org/529.png,0.2
+F1,Strasbourg,RC Strasbourg Alsace,https://crests.football-data.org/576.png,1.0
+F1,Toulouse,Toulouse FC,https://crests.football-data.org/511.png,1.0
+F1,Troyes,ES Troyes AC,https://crests.football-data.org/531.png,1.0

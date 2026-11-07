@@ -26,6 +26,8 @@ PREDICTIONS_FILE = Path("results/predictions_upcoming.csv")
 LOG_FILE = Path("results/predictions_log.csv")
 MATCHES_FILE = Path("data/processed/domestic_matches.csv")
 SITE_DIR = Path("site")
+CRESTS_FILE = Path("data/crests.csv")  # made by src/fetch_crests.py (top 5 leagues only)
+SHOW_CRESTS = True  # False -> every team gets the initials badge, no images from football-data.org
 KEY = ["date", "home_team", "away_team"]
 # league code -> (name, country, flag, colour used on the site)
 LEAGUES = {
@@ -98,12 +100,33 @@ def pct(value):
     return "–" if pd.isna(value) else f"{value:.0%}"
 
 
-def badge(team):
-    """A round badge with the club's initials and its own colour (no club logos - they belong to the clubs)."""
+def load_crests():
+    """{team: crest image URL} from data/crests.csv; empty if crests are off or the file is missing."""
+    if not SHOW_CRESTS or not CRESTS_FILE.exists():
+        return {}
+    crests = pd.read_csv(CRESTS_FILE).dropna(subset=["crest_url"])
+    return dict(zip(crests["team"], crests["crest_url"]))
+
+
+CRESTS = load_crests()
+
+
+def initials_badge(team, hidden=False):
+    """A round badge with the club's initials and its own colour."""
     words = [w for w in team.replace("-", " ").split() if w.upper() not in PREFIXES] or [team]
     letters = (words[0][0] + words[1][0]) if len(words) > 1 else words[0][:3]
     hue = int(hashlib.md5(team.encode()).hexdigest(), 16) % 360
-    return f'<span class="crest" style="--h:{hue}">{escape(letters.upper())}</span>'
+    return f'<span class="crest" style="--h:{hue}"{" hidden" if hidden else ""}>{escape(letters.upper())}</span>'
+
+
+def badge(team):
+    """The club crest (linked from football-data.org) or, without one, the initials badge.
+    If the image fails to load in the browser, the initials badge is shown instead."""
+    url = CRESTS.get(team)
+    if not url:
+        return initials_badge(team)
+    return (f'<img class="crest-img" src="{escape(url)}" alt="" loading="lazy" '
+            f'onerror="this.nextElementSibling.hidden=false;this.remove()">{initials_badge(team, hidden=True)}')
 
 
 def local_kick_off(row):
@@ -260,6 +283,8 @@ h2 small {{ display:block; font:500 13px Inter, sans-serif; color:var(--muted); 
 .crest {{ flex:none; width:26px; height:26px; border-radius:50%; display:grid; place-items:center; font:700 9.5px Inter, sans-serif;
   letter-spacing:.02em; color:#fff; background:linear-gradient(140deg, hsl(var(--h) 55% 45%), hsl(calc(var(--h) + 40) 60% 28%));
   box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.18); }}
+.crest[hidden] {{ display:none; }}
+.crest-img {{ flex:none; width:26px; height:26px; object-fit:contain; }}
 .name {{ font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }}
 .xg, .score {{ margin-left:auto; font-variant-numeric:tabular-nums; }}
 .xg {{ color:var(--muted); font-size:12px; }} .xg::before {{ content:"xG "; opacity:.6; }}
