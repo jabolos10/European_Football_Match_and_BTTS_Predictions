@@ -40,6 +40,15 @@ LEAGUES = {
 }
 SOURCE_TZ = ZoneInfo("Europe/London")   # football-data.co.uk gives kick-off times in UK time
 SITE_TZ = ZoneInfo("Europe/Warsaw")     # the site shows Central European time
+# Two model variants run side by side until new matches show which one to keep.
+# key -> name on the site, columns with its 1X2 chances, column with its BTTS chance
+MODELS = {
+    "goals": {"name": "Classic", "result": ["home_win", "draw", "away_win"], "btts": "btts_goals_model"},
+    "ratings": {"name": "Ratings", "result": ["home_win_ratings", "draw_ratings", "away_win_ratings"],
+                "btts": "btts_ratings_model"},
+}
+MODEL_COLUMNS = [c for m in MODELS.values() for c in m["result"] + [m["btts"]]]
+STRONG_BTTS = 0.6
 LATEST_HOUR_UTC = 9  # on match day predictions may only be added/changed before 09:00 UTC (before the first kick-off)
 
 
@@ -57,6 +66,9 @@ def update_log(now):
         log = pd.concat([log[~replaced], new], ignore_index=True)
     else:
         log = new
+    for column in MODEL_COLUMNS:
+        if column not in log.columns:
+            log[column] = np.nan
     log = log.sort_values(KEY).reset_index(drop=True)
     log.to_csv(LOG_FILE, index=False)
     return log
@@ -79,7 +91,7 @@ def summary(settled):
         return None
     probs = settled[["home_win", "draw", "away_win"]].to_numpy()
     btts_prob = settled["btts_goals_model"].to_numpy()
-    strong = btts_prob >= 0.6
+    strong = btts_prob >= STRONG_BTTS
     return {
         "matches": len(settled),
         "accuracy": settled["pick_right"].mean(),
@@ -89,6 +101,27 @@ def summary(settled):
     }
 
 
+
+def model_duel(settled):
+    """Compare both models on the same settled matches (only those both models predicted)."""
+    both = settled.dropna(subset=MODEL_COLUMNS) if not settled.empty else settled
+    if both.empty:
+        return None
+    outcome, happened = both["outcome"].to_numpy(), both["btts"].to_numpy()
+    duel = {"matches": len(both)}
+    for key, model in MODELS.items():
+        probs = both[model["result"]].to_numpy()
+        btts = both[model["btts"]].to_numpy()
+        strong = btts >= STRONG_BTTS
+        duel[key] = {
+            "favourite": np.mean(np.argmax(probs, axis=1) == outcome),  # most likely result happened
+            "rps": rps(probs, outcome),                                # quality of the 1X2 %, lower is better
+            "right": np.mean((btts >= 0.5) == happened),               # BTTS yes/no call was right
+            "brier": np.mean((btts - happened) ** 2),                  # quality of the BTTS %, lower is better
+            "strong_n": int(strong.sum()),
+            "strong_hit": happened[strong].mean() if strong.any() else np.nan,
+        }
+    return duel
 
 
 # ---------- page ----------
@@ -156,26 +189,63 @@ def team_line(team, extra):
     return f'<div class="team">{badge(team)}<span class="name">{escape(team)}</span>{extra}</div>'
 
 
+def value_of(g, column):
+    return getattr(g, column, np.nan)
+
+
+def model_bars(g):
+    """One 1X2 bar per model; the switch on the page shows one of them."""
+    bars = []
+    for key, model in MODELS.items():
+        home, draw, away = (value_of(g, c) for c in model["result"])
+        inner = (prob_bar(home, draw, away) if pd.notna(home)
+                 else '<div class="bar"></div><div class="plabels">not predicted by this model</div>')
+        bars.append(f'<div class="probs m-{key}">{inner}</div>')
+    return "".join(bars)
+
+
+def btts_tiles(g):
+    tiles = []
+    for key, model in MODELS.items():
+        value = value_of(g, model["btts"])
+        strong = " strong" if pd.notna(value) and value >= STRONG_BTTS else ""
+        tiles.append(f'<div class="btts m-{key}{strong}"><small>BTTS</small><b>{pct(value)}</b></div>')
+    return "".join(tiles)
+
+
+def check_chips(g):
+    """✓ / ✗ for the 1X2 favourite and the BTTS call of each model."""
+    chips = []
+    for key, model in MODELS.items():
+        probs = [value_of(g, c) for c in model["result"]]
+        btts = value_of(g, model["btts"])
+        if pd.isna(probs[0]):
+            chips.append(f'<span class="chip none m-{key}">1X2 –</span>')
+        else:
+            right = int(np.argmax(probs)) == g.outcome
+            chips.append(f'<span class="chip {"ok" if right else "bad"} m-{key}">1X2 {"✓" if right else "✗"}</span>')
+        if pd.isna(btts):
+            chips.append(f'<span class="chip none m-{key}">BTTS –</span>')
+        else:
+            right = (btts >= 0.5) == bool(g.btts)
+            chips.append(f'<span class="chip {"ok" if right else "bad"} m-{key}">BTTS {"✓" if right else "✗"}</span>')
+    return "".join(chips)
+
+
 def match_card(g, time_text):
-    strong = " strong" if g.btts_goals_model >= 0.6 else ""
     return (
         f'<article class="match"><div class="when">{time_text}</div>'
         f'<div class="teams">{team_line(g.home_team, f"<span class=xg>{g.xg_home:.1f}</span>")}'
         f'{team_line(g.away_team, f"<span class=xg>{g.xg_away:.1f}</span>")}</div>'
-        f'<div class="probs">{prob_bar(g.home_win, g.draw, g.away_win)}</div>'
-        f'<div class="btts{strong}"><small>BTTS</small><b>{pct(g.btts_goals_model)}</b></div></article>')
+        f'{model_bars(g)}{btts_tiles(g)}</article>')
 
 
 def result_card(g):
-    pick = "ok" if g.pick_right else "bad"
-    btts_right = (g.btts_goals_model >= 0.5) == bool(g.btts)
     score = lambda goals: f'<span class="score">{int(goals)}</span>'
     return (
         f'<article class="match result"><div class="when">{local_kick_off(g)[0]:%d %b}</div>'
         f'<div class="teams">{team_line(g.home_team, score(g.home_goals))}{team_line(g.away_team, score(g.away_goals))}</div>'
-        f'<div class="probs">{prob_bar(g.home_win, g.draw, g.away_win)}</div>'
-        f'<div class="checks"><span class="chip {pick}">1X2 {"✓" if g.pick_right else "✗"}</span>'
-        f'<span class="chip {"ok" if btts_right else "bad"}">BTTS {"✓" if btts_right else "✗"}</span></div></article>')
+        f'{model_bars(g)}<div class="checks">{check_chips(g)}</div></article>')
 
 
 def league_header(code, count, label):
@@ -201,9 +271,38 @@ def upcoming_html(predictions):
     return "".join(sections) or '<p class="empty">No upcoming matches right now.</p>'
 
 
-def record_html(settled, stats):
+def duel_html(duel):
+    """Side-by-side scores of both models; the better value in each row is highlighted."""
+    names = {key: model["name"] for key, model in MODELS.items()}
+    if duel is None:
+        return ('<div class="duel"><div class="duel-head"><b>Model duel</b><span>Classic vs Ratings - the scores '
+                'appear after the first matches both models predicted.</span></div></div>')
+    rows = [("1X2 · favourite was right", "favourite", True, lambda v: f"{v:.0%}"),
+            ("1X2 · RPS, lower is better", "rps", False, lambda v: f"{v:.3f}"),
+            ("BTTS · right yes/no call", "right", True, lambda v: f"{v:.0%}"),
+            ("BTTS · Brier score, lower is better", "brier", False, lambda v: f"{v:.3f}"),
+            (f"BTTS · hit rate when ≥ {STRONG_BTTS:.0%}", "strong_hit", True, pct)]
+    body = []
+    for label, field, higher_wins, fmt in rows:
+        values = {key: duel[key][field] for key in names}
+        valid = {key: value for key, value in values.items() if pd.notna(value)}
+        leader = None
+        if len(valid) == len(names) and len(set(valid.values())) > 1:
+            leader = (max if higher_wins else min)(valid, key=valid.get)
+        cells = []
+        for key in names:
+            count = f' <small>({duel[key]["strong_n"]})</small>' if field == "strong_hit" else ""
+            cells.append(f'<span class="{"lead" if key == leader else ""}">{fmt(values[key])}{count}</span>')
+        body.append(f'<div class="duel-row"><em>{label}</em>{"".join(cells)}</div>')
+    header = "".join(f"<span>{name}</span>" for name in names.values())
+    return (f'<div class="duel"><div class="duel-head"><b>Model duel</b><span>Same {duel["matches"]} matches, '
+            f'both models. The better one stays.</span></div><div class="duel-row top"><em></em>{header}</div>'
+            f'{"".join(body)}</div>')
+
+
+def record_html(settled, stats, duel):
     if stats is None:
-        return ('<div class="stats"><div class="stat wide"><b>Starting now</b>'
+        return duel_html(duel) + ('<div class="stats"><div class="stat wide"><b>Starting now</b>'
                 '<span>The first predictions are logged - the track record appears after the next matchday.</span></div></div>')
     stats_html = (
         '<div class="stats">'
@@ -221,7 +320,7 @@ def record_html(settled, stats):
         cards = "".join(result_card(g) for g in games.itertuples())
         sections.append(f'<section class="league" data-league="{code}" style="--lg:{LEAGUES[code][3]}">'
                         f'{league_header(code, len(games), "latest")}<div class="grid">{cards}</div></section>')
-    return stats_html + "".join(sections)
+    return stats_html + duel_html(duel) + "".join(sections)
 
 
 def filters_html(codes):
@@ -229,7 +328,11 @@ def filters_html(codes):
     for code in codes:
         name, _, flag, color = LEAGUES[code]
         buttons.append(f'<button class="pill" data-filter="{code}" style="--lg:{color}">{flag} {name}</button>')
-    return f'<nav class="filters">{"".join(buttons)}</nav>'
+    switch = "".join(f'<button class="model{" active" if i == 0 else ""}" data-model="{key}">{name}'
+                     f'{" <em>NEW</em>" if key == "ratings" else ""}</button>'
+                     for i, (key, name) in enumerate((k, m["name"]) for k, m in MODELS.items()))
+    return (f'<nav class="filters">{"".join(buttons)}</nav>'
+            f'<div class="switch"><span>Model</span>{switch}</div>')
 
 
 PAGE = """<!doctype html>
@@ -307,6 +410,29 @@ h2 small {{ display:block; font:500 13px Inter, sans-serif; color:var(--muted); 
 .empty {{ color:var(--muted); }}
 footer {{ margin-top:56px; padding-top:20px; border-top:1px solid var(--line); color:var(--muted); font-size:13px; }}
 footer a {{ color:var(--accent); }}
+.switch {{ display:inline-flex; align-items:center; gap:4px; margin:4px 0 18px; padding:4px; background:var(--surface);
+  border:1px solid var(--line); border-radius:999px; }}
+.switch > span {{ font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); padding:0 8px 0 10px; }}
+.switch .model {{ font:700 13px Inter, sans-serif; color:var(--muted); background:none; border:0; border-radius:999px;
+  padding:7px 14px; cursor:pointer; }}
+.switch .model.active {{ background:var(--accent); color:#0a0c10; }}
+.switch .model em {{ font-style:normal; font-size:9.5px; letter-spacing:.06em; margin-left:4px; padding:2px 5px; border-radius:5px;
+  background:rgba(76,201,240,.18); color:var(--away); }}
+.switch .model.active em {{ background:rgba(10,12,16,.15); color:#0a0c10; }}
+body:not(.use-ratings) .m-ratings, body.use-ratings .m-goals {{ display:none; }}
+.chip.none {{ background:var(--surface); color:var(--muted); }}
+.duel {{ margin-top:14px; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px 18px; }}
+.duel-head {{ display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 12px; margin-bottom:6px; }}
+.duel-head b {{ font:800 22px/1 'Barlow Condensed', sans-serif; text-transform:uppercase; letter-spacing:.03em; }}
+.duel-head span {{ color:var(--muted); font-size:13px; }}
+.duel-row {{ display:grid; grid-template-columns:minmax(0,1fr) 110px 110px; align-items:center; gap:10px; padding:9px 0;
+  border-top:1px solid var(--line); font-variant-numeric:tabular-nums; }}
+.duel-row em {{ font-style:normal; color:var(--muted); font-size:13px; }}
+.duel-row span {{ text-align:center; font:700 20px/1 'Barlow Condensed', sans-serif; border-radius:8px; padding:6px 0; }}
+.duel-row span small {{ font:500 11px Inter, sans-serif; color:var(--muted); }}
+.duel-row span.lead {{ background:rgba(200,245,66,.13); color:var(--accent); }}
+.duel-row.top {{ border-top:0; padding-bottom:0; }}
+.duel-row.top span {{ font:600 11px Inter, sans-serif; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }}
 .hidden {{ display:none; }}
 @media (max-width:620px) {{
   .grid {{ grid-template-columns:1fr; }}
@@ -315,6 +441,7 @@ footer a {{ color:var(--accent); }}
   .probs {{ grid-column:1/-1; order:3; }}
   .league {{ padding:14px; }}
   h2 {{ font-size:28px; }}
+  .duel-row {{ grid-template-columns:minmax(0,1fr) 78px 78px; }}
 }}
 </style></head>
 <body><main>
@@ -330,8 +457,9 @@ footer a {{ color:var(--accent); }}
 {upcoming}
 <h2>Track record<small>Every prediction is logged before the match - nothing is changed afterwards.</small></h2>
 {record}
-<footer>Model: own Elo ratings with form, shots, home/away and head-to-head features · logistic regression for the result,
-Poisson goals model for both teams to score · data from football-data.co.uk ·
+<footer>Model: own Elo ratings with form, shots, home/away and head-to-head features · two variants side by side.
+Classic: logistic regression for the result, Poisson goals model for both teams to score. Ratings: attack/defence ratings
+with the Dixon-Coles correction (result averaged with Classic) · data from football-data.co.uk ·
 <a href="https://github.com/jabolos10/European_Football_Match_and_BTTS_Predictions">code on GitHub</a></footer>
 </main>
 <script>
@@ -344,6 +472,15 @@ document.querySelectorAll('.pill').forEach(function (pill) {{
     }});
   }});
 }});
+function useModel(model) {{
+  document.body.classList.toggle('use-ratings', model === 'ratings');
+  document.querySelectorAll('.switch .model').forEach(function (b) {{ b.classList.toggle('active', b.dataset.model === model); }});
+  try {{ localStorage.setItem('bttsModel', model); }} catch (e) {{}}
+}}
+document.querySelectorAll('.switch .model').forEach(function (b) {{
+  b.addEventListener('click', function () {{ useModel(b.dataset.model); }});
+}});
+try {{ var saved = localStorage.getItem('bttsModel'); if (saved) useModel(saved); }} catch (e) {{}}
 </script>
 </body></html>
 """
@@ -354,12 +491,13 @@ def main():
     log = update_log(now)
     settled = settle(log)
     stats = summary(settled)
+    duel = model_duel(settled)
     predictions = pd.read_csv(PREDICTIONS_FILE)
 
     SITE_DIR.mkdir(exist_ok=True)
     html = PAGE.format(updated=now.astimezone(SITE_TZ).strftime("%d %b %Y, %H:%M"),
                        filters=filters_html([c for c in LEAGUES if c in set(predictions["league"])]),
-                       upcoming=upcoming_html(predictions), record=record_html(settled, stats))
+                       upcoming=upcoming_html(predictions), record=record_html(settled, stats, duel))
     (SITE_DIR / "index.html").write_text(html, encoding="utf-8")
     print(f"Log: {len(log)} predictions, {len(settled)} settled. Wrote {SITE_DIR / 'index.html'}")
 

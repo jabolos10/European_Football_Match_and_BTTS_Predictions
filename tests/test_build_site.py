@@ -5,6 +5,7 @@ Run from the project root:  python -m pytest -q
 """
 from datetime import datetime, timezone
 
+import numpy as np
 import pandas as pd
 
 import src.build_site as site
@@ -56,3 +57,23 @@ def test_badge_uses_crest_with_initials_fallback(monkeypatch):
     assert '<img class="crest-img" src="https://crests.football-data.org/65.png"' in with_crest
     assert '<span class="crest"' in with_crest and " hidden>" in with_crest  # fallback if the image fails
     assert build_site.badge("Legia") == build_site.initials_badge("Legia")  # no crest -> initials only
+
+
+def test_model_duel_compares_only_matches_both_models_predicted():
+    settled = pd.DataFrame({
+        "outcome": [0, 1, 2, 0],          # home win, draw, away win, home win
+        "btts": [1, 0, 1, 1],
+        "home_win": [0.5, 0.5, 0.2, 0.6], "draw": [0.3, 0.3, 0.3, 0.2], "away_win": [0.2, 0.2, 0.5, 0.2],
+        "home_win_ratings": [0.6, 0.3, 0.5, np.nan], "draw_ratings": [0.2, 0.4, 0.3, np.nan],
+        "away_win_ratings": [0.2, 0.3, 0.2, np.nan],
+        "btts_goals_model": [0.7, 0.6, 0.4, 0.65],
+        "btts_ratings_model": [0.65, 0.3, 0.55, np.nan],   # last match: logged before the ratings model existed
+    })
+    duel = site.model_duel(settled)
+    assert duel["matches"] == 3
+    assert duel["goals"]["favourite"] == 2 / 3 and duel["ratings"]["favourite"] == 2 / 3
+    assert duel["goals"]["right"] == 1 / 3      # BTTS: 0.7 yes ✓, 0.6 yes ✗, 0.4 no ✗
+    assert duel["ratings"]["right"] == 1        # all three BTTS calls right
+    assert duel["ratings"]["strong_n"] == 1 and duel["goals"]["strong_n"] == 2
+    assert "Model duel" in site.duel_html(duel)
+    assert site.model_duel(settled.iloc[3:]) is None

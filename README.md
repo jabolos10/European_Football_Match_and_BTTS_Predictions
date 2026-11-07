@@ -226,7 +226,7 @@ docs/                       images for this README
 
 ---
 
-## 🙏 Data and credits
+## 🗂️ Data and credits
 
 - Match results and statistics: [football-data.co.uk](https://www.football-data.co.uk)
 - Club crests: [football-data.org](https://www.football-data.org) (top 5 leagues) and [API-Football](https://www.api-football.com) (Ekstraklasa)

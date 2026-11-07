@@ -5,8 +5,9 @@ Steps:
   1) download the list of upcoming matches from football-data.co.uk
      (fixtures.csv for the big leagues, new_league_fixtures.csv for Ekstraklasa),
   2) compute Elo and all features from the finished matches,
-  3) train logistic regression (result and BTTS) and the goals model (expected goals of
-     both teams) on all finished matches,
+  3) train logistic regression (result and BTTS), the goals model (expected goals of both
+     teams from match features) and the ratings model (expected goals from attack/defence
+     ratings, see src/ratings_model.py) on all finished matches,
   4) predict every upcoming match and save the table to results/predictions_upcoming.csv.
 
 Run python -m src.load_domestic_leagues first, so the latest results are included.
@@ -26,6 +27,7 @@ from src.features import add_features, feature_groups
 from src.goals_model import goals_regressor, markets
 from src.load_domestic_leagues import download, read_csv
 from src.metrics import market_probabilities, outcome_index
+from src import ratings_model
 
 PARAMS_FILE = Path("results/elo_params.json")
 OUT_FILE = Path("results/predictions_upcoming.csv")
@@ -94,7 +96,7 @@ def main():
     # Features for finished and upcoming matches together, so upcoming ones see all past results
     history["upcoming"] = False
     combined = pd.concat([history, fixtures], ignore_index=True)
-    combined = add_features(combined, LEAGUES)
+    combined = ratings_model.add_ratings(add_features(combined, LEAGUES))
     columns = [c for group in feature_groups(LEAGUES).values() for c in group]
 
     train = combined[~combined["upcoming"] & combined["league"].isin(LEAGUES)
@@ -121,8 +123,15 @@ def main():
     upcoming["home_win_and_btts"] = goals["home_win_and_btts"]
     upcoming["away_win_and_btts"] = goals["away_win_and_btts"]
 
+    # Ratings model: the second variant on the website. BTTS straight from the ratings model,
+    # 1X2 = average of the classic logistic regression and the ratings model (better than either alone)
+    upcoming["btts_ratings_model"], ratings_result = ratings_model.fit_predict(train, upcoming, LEAGUES)
+    averaged = (result_probs + ratings_result) / 2
+    upcoming["home_win_ratings"], upcoming["draw_ratings"], upcoming["away_win_ratings"] = averaged.T
+
     out = upcoming[["date", "kick_off", "league", "home_team", "away_team", "home_win", "draw", "away_win",
-                    "btts_yes", "btts_goals_model", "xg_home", "xg_away",
+                    "home_win_ratings", "draw_ratings", "away_win_ratings",
+                    "btts_yes", "btts_goals_model", "btts_ratings_model", "xg_home", "xg_away",
                     "home_win_and_btts", "away_win_and_btts"]].copy()
     out["date"] = out["date"].dt.date
     OUT_FILE.parent.mkdir(exist_ok=True)
@@ -137,16 +146,16 @@ def main():
             continue
         print(f"\n{LEAGUE_NAMES[code]}")
         print(f"  {'date':10} {'time':5}  {'match':38} {'home':>5} {'draw':>5} {'away':>5}"
-              f"  {'BTTS':>5} {'BTTS*':>5} {'xG':>9}  {'1&BTTS':>6} {'2&BTTS':>6}"
+              f"  {'BTTS':>5} {'BTTS*':>5} {'BTTS+':>5} {'xG':>9}  {'1&BTTS':>6} {'2&BTTS':>6}"
               f"  | bookmakers {'home':>5} {'draw':>5} {'away':>5}")
         for g in games.itertuples():
             match = f"{g.home_team} - {g.away_team}"
             xg = f"{g.xg_home:.1f}-{g.xg_away:.1f}"
             print(f"  {g.date!s:10} {g.kick_off!s:5}  {match:38} {g.home_win:5.0%} {g.draw:5.0%} {g.away_win:5.0%}"
-                  f"  {g.btts_yes:5.0%} {g.btts_goals_model:5.0%} {xg:>9}"
+                  f"  {g.btts_yes:5.0%} {g.btts_goals_model:5.0%} {g.btts_ratings_model:5.0%} {xg:>9}"
                   f"  {g.home_win_and_btts:6.0%} {g.away_win_and_btts:6.0%}"
                   f"  |            {g.book_home:5.0%} {g.book_draw:5.0%} {g.book_away:5.0%}")
-    print("\nBTTS = logistic regression, BTTS* = goals model, xG = expected goals home-away,"
+    print("\nBTTS = logistic regression, BTTS* = goals model, BTTS+ = ratings model, xG = expected goals home-away,"
           "\n1&BTTS / 2&BTTS = home / away win and both teams score")
     print(f"\nSaved {len(out)} matches to {OUT_FILE}")
 
