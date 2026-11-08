@@ -2,5 +2,6 @@ pandas
 numpy
 scikit-learn
 scipy
+matplotlib
 requests
 pytest
