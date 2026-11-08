@@ -16,6 +16,7 @@
   &nbsp;·&nbsp; <a href="#-how-it-works">How it works</a>
   &nbsp;·&nbsp; <a href="#-tested-like-real-life">Testing</a>
   &nbsp;·&nbsp; <a href="#-results">Results</a>
+  &nbsp;·&nbsp; <a href="notebooks/demo.ipynb">Notebook</a>
   &nbsp;·&nbsp; <a href="#-run-it-yourself">Run it</a>
 </p>
 
@@ -147,6 +148,21 @@ Walk-forward test, seasons 2021-22 to 2025-26:
 
 ---
 
+## 📈 Analysis notebook
+
+Want to see the models from the inside? **[`notebooks/demo.ipynb`](notebooks/demo.ipynb)** walks through the whole project on real data, with charts at every step:
+
+| | What you'll find |
+|:-:|---|
+| 📈 | Elo ratings of the top clubs over time |
+| 🧪 | All models side by side, including a **neural network (MLP)** |
+| 🌳 | What the decision trees in gradient boosting actually look at, plus one tree small enough to read |
+| 🎯 | Calibration charts: when the model says 60%, does it happen 60% of the time? |
+| 🤔 | Why the simple model beat the complex ones |
+| ⚽ | One Clásico through the goals model, from expected goals to every exact score |
+
+---
+
 ## ⚠️ Limitations
 
 - Line-ups, injuries, transfers and new coaches are not used yet, so the model reacts late to them.
@@ -166,7 +182,7 @@ Walk-forward test, seasons 2021-22 to 2025-26:
 - [x] Daily automatic predictions and live website with club crests
 - [ ] 🏆 UEFA Champions League
 - [ ] 📡 Kalman filter for team strength that changes week by week
-- [ ] 🧠 Neural network (MLP)
+- [x] 🧠 Neural network (MLP) tested: no better than logistic regression ([see why](notebooks/demo.ipynb))
 - [ ] 📉 Calibration charts on the website
 - [ ] 👥 Line-ups, injuries and xG data
 
