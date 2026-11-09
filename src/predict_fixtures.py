@@ -39,6 +39,13 @@ LEAGUE_NAMES = {"E0": "Premier League", "SP1": "LaLiga", "I1": "Serie A",
                 "D1": "Bundesliga", "F1": "Ligue 1", "POL": "Ekstraklasa"}
 
 
+# Columns of results/predictions_upcoming.csv (club and national team matches)
+OUT_COLUMNS = ["date", "kick_off", "league", "home_team", "away_team", "home_win", "draw", "away_win",
+               "home_win_ratings", "draw_ratings", "away_win_ratings",
+               "btts_yes", "btts_goals_model", "btts_ratings_model", "xg_home", "xg_away",
+               "home_win_and_btts", "away_win_and_btts", "derby"]
+
+
 def season_of(dates):
     """Season = the year it started: matches from July on belong to this year's season."""
     return np.where(dates.dt.month >= 7, dates.dt.year, dates.dt.year - 1)
@@ -87,8 +94,36 @@ def main():
     if unknown:
         print(f"Skipped - teams not in our results data: {unknown}")
         fixtures = fixtures[fixtures["home_team"].isin(ratings) & fixtures["away_team"].isin(ratings)]
+
+    # No club matches (e.g. an international break): still predict the national teams and build the site
     if fixtures.empty:
-        raise SystemExit("No upcoming matches found.")
+        print("No upcoming club matches - only national teams this time.")
+        out, upcoming = pd.DataFrame(columns=OUT_COLUMNS), None
+    else:
+        out, upcoming = predict_clubs(history, ratings, fixtures)
+    club_matches = out.copy()
+
+    # National teams (hand-typed fixtures in data/international_fixtures.csv); a problem there
+    # must never stop the club predictions
+    try:
+        national = international.predict_upcoming(date.today())
+    except Exception as error:  # noqa: BLE001
+        print(f"International predictions skipped: {error}")
+        national = pd.DataFrame()
+    if not national.empty:
+        national["derby"] = 0
+        out = national[OUT_COLUMNS] if out.empty else pd.concat([out, national[OUT_COLUMNS]], ignore_index=True)
+
+    OUT_FILE.parent.mkdir(exist_ok=True)
+    out.round(3).to_csv(OUT_FILE, index=False)
+    if upcoming is not None:
+        print_club_matches(club_matches, upcoming)
+    print_national(national)
+    print(f"\nSaved {len(out)} matches to {OUT_FILE}")
+
+
+def predict_clubs(history, ratings, fixtures):
+    """Club predictions for the upcoming fixtures. Returns (table for the website, full table with odds)."""
     fixtures["elo_home"] = fixtures["home_team"].map(ratings)
     fixtures["elo_away"] = fixtures["away_team"].map(ratings)
     fixtures["upcoming"] = True
@@ -131,28 +166,13 @@ def main():
     averaged = (result_probs + ratings_result) / 2
     upcoming["home_win_ratings"], upcoming["draw_ratings"], upcoming["away_win_ratings"] = averaged.T
 
-    out = upcoming[["date", "kick_off", "league", "home_team", "away_team", "home_win", "draw", "away_win",
-                    "home_win_ratings", "draw_ratings", "away_win_ratings",
-                    "btts_yes", "btts_goals_model", "btts_ratings_model", "xg_home", "xg_away",
-                    "home_win_and_btts", "away_win_and_btts", "derby"]].copy()
+    out = upcoming[OUT_COLUMNS].copy()
     out["date"] = out["date"].dt.date
-    club_matches = out.copy()
+    return out, upcoming
 
-    # National teams (hand-typed fixtures in data/international_fixtures.csv); a problem there
-    # must never stop the club predictions
-    try:
-        national = international.predict_upcoming(date.today())
-    except Exception as error:  # noqa: BLE001
-        print(f"International predictions skipped: {error}")
-        national = pd.DataFrame()
-    if not national.empty:
-        national["derby"] = 0
-        out = pd.concat([out, national[out.columns]], ignore_index=True)
 
-    OUT_FILE.parent.mkdir(exist_ok=True)
-    out.round(3).to_csv(OUT_FILE, index=False)
-
-    # Print per league, with the bookmakers' % next to ours (only on screen, not saved)
+def print_club_matches(club_matches, upcoming):
+    """Print per league, with the bookmakers' % next to ours (only on screen, not saved)."""
     market = market_probabilities(upcoming["odds_home"], upcoming["odds_draw"], upcoming["odds_away"])
     club_matches["book_home"], club_matches["book_draw"], club_matches["book_away"] = market.T
     for code in LEAGUES:
@@ -172,13 +192,16 @@ def main():
                   f"  |            {g.book_home:5.0%} {g.book_draw:5.0%} {g.book_away:5.0%}")
     print("\nBTTS = logistic regression, BTTS* = goals model, BTTS+ = ratings model, xG = expected goals home-away,"
           "\n1&BTTS / 2&BTTS = home / away win and both teams score")
-    if not national.empty:
-        print("\nNational teams")
-        for g in national.itertuples():
-            match = f"{g.home_team} - {g.away_team}"
-            print(f"  {g.date!s:10} {g.kick_off!s:5}  {match:38} {g.home_win:5.0%} {g.draw:5.0%} {g.away_win:5.0%}"
-                  f"  BTTS {g.btts_goals_model:4.0%}  xG {g.xg_home:.1f}-{g.xg_away:.1f}")
-    print(f"\nSaved {len(out)} matches to {OUT_FILE}")
+
+
+def print_national(national):
+    if national.empty:
+        return
+    print("\nNational teams")
+    for g in national.itertuples():
+        match = f"{g.home_team} - {g.away_team}"
+        print(f"  {g.date!s:10} {g.kick_off!s:5}  {match:38} {g.home_win:5.0%} {g.draw:5.0%} {g.away_win:5.0%}"
+              f"  BTTS {g.btts_goals_model:4.0%}  xG {g.xg_home:.1f}-{g.xg_away:.1f}")
 
 
 if __name__ == "__main__":
