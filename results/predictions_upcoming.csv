@@ -1,8 +1,4 @@
 date,kick_off,league,home_team,away_team,home_win,draw,away_win,home_win_ratings,draw_ratings,away_win_ratings,btts_yes,btts_goals_model,btts_ratings_model,xg_home,xg_away,home_win_and_btts,away_win_and_btts,derby
-2026-11-14,17:00,INT,Norway,Wales,0.689,0.217,0.094,0.689,0.217,0.094,0.438,0.438,0.438,2.071,0.665,,,0
-2026-11-14,19:45,INT,Portugal,Denmark,0.661,0.231,0.108,0.661,0.231,0.108,0.447,0.447,0.447,1.974,0.697,,,0
-2026-11-14,19:45,INT,Romania,Poland,0.314,0.319,0.367,0.314,0.319,0.367,0.498,0.498,0.498,1.123,1.231,,,0
-2026-11-14,19:45,INT,Sweden,Bosnia and Herzegovina,0.555,0.277,0.168,0.555,0.277,0.168,0.474,0.474,0.474,1.665,0.828,,,0
 2026-11-15,19:45,INT,Belgium,Italy,0.513,0.291,0.196,0.513,0.291,0.196,0.482,0.482,0.482,1.557,0.886,,,0
 2026-11-15,19:45,INT,France,Turkey,0.79,0.158,0.052,0.79,0.158,0.052,0.398,0.398,0.398,2.499,0.55,,,0
 2026-11-15,19:45,INT,Croatia,Czech Republic,0.655,0.234,0.111,0.655,0.234,0.111,0.449,0.449,0.449,1.955,0.705,,,0
