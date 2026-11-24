@@ -1,5 +1,1 @@
 date,kick_off,league,home_team,away_team,home_win,draw,away_win,home_win_ratings,draw_ratings,away_win_ratings,btts_yes,btts_goals_model,btts_ratings_model,xg_home,xg_away,home_win_and_btts,away_win_and_btts,derby
-2026-11-23,18:00,POL,Wieczysta Krakow,Motor Lublin,0.342,0.283,0.375,0.345,0.287,0.368,0.534,0.54,0.576,1.301,1.358,0.169,0.181,0
-2026-11-23,19:45,I1,Monza,Fiorentina,0.288,0.284,0.428,0.3,0.281,0.419,0.627,0.624,0.61,1.376,1.804,0.171,0.265,0
-2026-11-23,20:00,E0,Brentford,Everton,0.435,0.263,0.302,0.418,0.281,0.301,0.535,0.545,0.544,1.52,1.196,0.211,0.147,0
-2026-11-23,20:00,SP1,Levante,Elche,0.454,0.285,0.26,0.449,0.29,0.26,0.589,0.568,0.535,1.607,1.24,0.228,0.152,0
